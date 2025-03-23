@@ -223,11 +223,9 @@ void ServerStart(void *object) {
                     if (isRunning && serverRenderer) {
                         serverRenderer->Draw();
                         if (outputClient){
-                            OutputEvent e = {.type=35};
+                            OutputEvent e = {.type=12};
                             outputClient->SendOutputEvent(e);
                         }
-
-
                     }
                 } else if (events[i].data.fd == outputSocket) {
                     OutputEvent ev;
