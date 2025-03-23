@@ -222,6 +222,12 @@ void ServerStart(void *object) {
                     // Add your code to handle timer expiration asynchronously
                     if (isRunning && serverRenderer) {
                         serverRenderer->Draw();
+                        if (outputClient){
+                            OutputEvent e = {.type=35};
+                            outputClient->SendOutputEvent(e);
+                        }
+
+
                     }
                 } else if (events[i].data.fd == outputSocket) {
                     OutputEvent ev;
