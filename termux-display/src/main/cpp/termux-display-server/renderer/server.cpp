@@ -218,11 +218,12 @@ void ServerStart(void *object) {
                         close(timer_fd);
                         continue;
                     }
-                    //LOG_I("Server Timer expired!");
+//                    LOG_I("Server Timer expired!");
                     // Add your code to handle timer expiration asynchronously
                     if (isRunning && serverRenderer) {
                         serverRenderer->Draw();
                         if (outputClient){
+//                            LOG_I("output finished!");
                             OutputEvent e = {.type=12};
                             outputClient->SendOutputEvent(e);
                         }

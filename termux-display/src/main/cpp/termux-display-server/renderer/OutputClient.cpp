@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <linux/un.h>
 #include "OutputClient.h"
+#include "../../termux-display-client/inc/LogUtil.h"
 
 void OutputClient::Init(int socket) {
     dataSocket = socket;
@@ -25,6 +26,7 @@ void OutputClient::Destroy() {
 }
 
 void OutputClient::SendOutputEvent(OutputEvent ev) {
+    LOG_I("send event : %d\n",ev.type);
     send(dataSocket, &ev, sizeof(ev), MSG_DONTWAIT);
 }
 
