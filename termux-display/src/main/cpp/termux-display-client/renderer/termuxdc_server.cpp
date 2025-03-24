@@ -128,7 +128,7 @@ ssize_t recv_fixed_size(int sockfd, void *buffer, size_t length) {
 }
 int termuxdc_server::waitEvent(termuxdc_event *event) {
     if (dataSocket > 0) {
-        ssize_t result = recv_fixed_size(dataSocket, event, sizeof (termuxdc_event));
+        ssize_t result = recv_fixed_size(dataSocket, event, sizeof (*event));
         if (result < 0) {
             perror("recv");
         } else if (result == 0) {
