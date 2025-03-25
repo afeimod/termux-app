@@ -159,13 +159,11 @@ void *ServerSetup(void *object) {
             LOG_E("output epoll_ctl failed:%s", strerror(errno));
         }
         LOG_I("accept outputSocket: %d", outputSocket);
-        accept(socketFd, nullptr, nullptr);
     }
 
-    LOG_D("Close dataSocket");
-
-    close(socketFd);
-    close(epollFd);
+//    LOG_D("Close dataSocket");
+//    close(socketFd);
+//    close(epollFd);
     return nullptr;
 }
 
@@ -225,7 +223,7 @@ void ServerStart(void *object) {
 
 
         struct epoll_event events[MAX_EVENTS];
-
+        int cnt =0;
         while (true) {
             int num_events = epoll_wait(epollFd, events, MAX_EVENTS, -1);
             if (num_events == -1) {
@@ -249,7 +247,8 @@ void ServerStart(void *object) {
                     // Add your code to handle timer expiration asynchronously
                     if (isRunning && serverRenderer) {
                         serverRenderer->Draw();
-                        if (outputClient){
+                        if (outputClient&&cnt<20){
+                            cnt++;
 //                            LOG_I("output finished!");
                             OutputEvent e = {.type=12};
                             outputClient->SendOutputEvent(e);
