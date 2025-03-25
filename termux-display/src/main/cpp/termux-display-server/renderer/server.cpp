@@ -109,32 +109,59 @@ void *ServerSetup(void *object) {
         return nullptr;
     }
 
-    while (1) {
+//    while (1) {
+//        // accept
+//        int currentSocket = accept(socketFd, nullptr, nullptr);
+//        if (currentSocket < 0) {
+//            LOG_E("accept: %s", strerror(errno));
+//            break;
+//        }
+//        if (dataSocket < 1) {
+//            dataSocket = currentSocket;
+//            pthread_t t;
+//            pthread_create(&t, nullptr, reinterpret_cast<void *(*)(void *)>(ServerStart), object);
+//            LOG_I("accept dataSocket: %d", currentSocket);
+//        } else {
+//            outputSocket = currentSocket;
+//            outputClient = new OutputClient;
+//            outputClient->Init(outputSocket);
+//
+//            struct epoll_event outputEvent;
+//            outputEvent.events = EPOLLIN;
+//            outputEvent.data.fd = outputSocket;
+//            if (epoll_ctl(epollFd, EPOLL_CTL_ADD, outputSocket, &outputEvent) == -1) {
+//                LOG_E("output epoll_ctl failed:%s", strerror(errno));
+//            }
+//            LOG_I("accept outputSocket: %d", currentSocket);
+//        }
+//    }
+    {
         // accept
-        int currentSocket = accept(socketFd, nullptr, nullptr);
-        if (currentSocket < 0) {
+        dataSocket = accept(socketFd, nullptr, nullptr);
+        if (dataSocket < 0) {
             LOG_E("accept: %s", strerror(errno));
-            break;
         }
-        if (dataSocket < 1) {
-            dataSocket = currentSocket;
-            pthread_t t;
-            pthread_create(&t, nullptr, reinterpret_cast<void *(*)(void *)>(ServerStart), object);
-            LOG_I("accept dataSocket: %d", currentSocket);
-        } else {
-            outputSocket = currentSocket;
-            outputClient = new OutputClient;
-            outputClient->Init(outputSocket);
+        pthread_t t;
+        pthread_create(&t, nullptr, reinterpret_cast<void *(*)(void *)>(ServerStart), object);
+        LOG_I("accept dataSocket: %d", dataSocket);
 
-            struct epoll_event outputEvent;
-            outputEvent.events = EPOLLIN;
-            outputEvent.data.fd = outputSocket;
-            if (epoll_ctl(epollFd, EPOLL_CTL_ADD, outputSocket, &outputEvent) == -1) {
-                LOG_E("output epoll_ctl failed:%s", strerror(errno));
-            }
-            LOG_I("accept outputSocket: %d", currentSocket);
+        outputSocket = accept(socketFd, nullptr, nullptr);
+        if (outputSocket < 0) {
+            LOG_E("accept: %s", strerror(errno));
         }
+        outputClient = new OutputClient;
+        outputClient->Init(outputSocket);
+
+        struct epoll_event outputEvent;
+        outputEvent.events = EPOLLIN;
+        outputEvent.data.fd = outputSocket;
+        if (epoll_ctl(epollFd, EPOLL_CTL_ADD, outputSocket, &outputEvent) == -1) {
+            LOG_E("output epoll_ctl failed:%s", strerror(errno));
+        }
+        LOG_I("accept outputSocket: %d", outputSocket);
+        accept(socketFd, nullptr, nullptr);
     }
+
     LOG_D("Close dataSocket");
 
     close(socketFd);
