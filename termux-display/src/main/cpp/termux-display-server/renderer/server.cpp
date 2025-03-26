@@ -247,12 +247,12 @@ void ServerStart(void *object) {
                     // Add your code to handle timer expiration asynchronously
                     if (isRunning && serverRenderer) {
                         serverRenderer->Draw();
-                        cnt++;
-                        if (outputClient&&cnt<20){
+                        if (outputClient&&cnt<2){
 //                            LOG_I("output finished!");
                             OutputEvent e = {.type=13};
                             outputClient->SendOutputEvent(e);
                         }
+                        cnt++;
                     }
                 } else if (events[i].data.fd == outputSocket) {
                     OutputEvent ev;
