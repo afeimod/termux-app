@@ -250,7 +250,7 @@ void ServerStart(void *object) {
                         cnt++;
                         if (outputClient&&cnt<20){
 //                            LOG_I("output finished!");
-                            OutputEvent e = {.type=12};
+                            OutputEvent e = {.type=13};
                             outputClient->SendOutputEvent(e);
                         }
                     }
