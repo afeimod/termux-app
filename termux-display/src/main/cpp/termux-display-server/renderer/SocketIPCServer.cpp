@@ -92,7 +92,6 @@ void SocketIPCServer::Init(AHardwareBuffer *hwBuffer, JNIEnv *e, jobject sf) {
         glBindTexture(GL_TEXTURE_2D, m_InputTexture);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, m_NativeBufferImage);
@@ -130,8 +129,8 @@ void SocketIPCServer::Draw() {
 //    BEGIN_TIME(__FUNCTION__);
     glUseProgram(m_Program);
     {
-        float x_scale = 1.0f;
-        float y_scale = 1.0f;
+        float x_scale = 0.8f;
+        float y_scale = 0.8f;
         GLfloat vertices[] = {
                 -1.f * x_scale, -1.f * y_scale,
                 1.f * x_scale, -1.f * y_scale,
@@ -150,6 +149,7 @@ void SocketIPCServer::Draw() {
                 0.0f, 1.0f,
                 1.0f, 1.0f
         };
+
         GLuint posLoc = glGetAttribLocation(m_Program, "a_position");
         glEnableVertexAttribArray(posLoc);
         glVertexAttribPointer(posLoc, 2, GL_FLOAT, GL_FALSE, 0, vertices);
