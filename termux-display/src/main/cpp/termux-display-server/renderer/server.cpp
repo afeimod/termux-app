@@ -48,13 +48,15 @@ Java_com_termux_display_Display_setServerNativeAssetManager(JNIEnv *env, jobject
 
 void setNativeWindow(JNIEnv *ev) {
     env = ev;
-    if (!vm){
+    if (!vm) {
         env->GetJavaVM(&vm);
     }
 }
-void setSurface(jobject sf){
+
+void setSurface(jobject sf) {
     surface = sf;
 }
+
 void *ServerSetup(void *object);
 
 void DisplayServerInit() {
@@ -135,7 +137,7 @@ void *ServerSetup(void *object) {
 //            LOG_I("accept outputSocket: %d", currentSocket);
 //        }
 //    }
-    {
+    while (true) {
         // accept
         dataSocket = accept(socketFd, nullptr, nullptr);
         if (dataSocket < 0) {
@@ -223,7 +225,7 @@ void ServerStart(void *object) {
 
 
         struct epoll_event events[MAX_EVENTS];
-        int cnt =0;
+        int cnt = 0;
         while (true) {
             int num_events = epoll_wait(epollFd, events, MAX_EVENTS, -1);
             if (num_events == -1) {
@@ -247,7 +249,7 @@ void ServerStart(void *object) {
                     // Add your code to handle timer expiration asynchronously
                     if (isRunning && serverRenderer) {
                         serverRenderer->Draw();
-                        if (outputClient&&cnt<2){
+                        if (outputClient && cnt < 2) {
 //                            LOG_I("output finished!");
                             OutputEvent e = {.type=13};
                             outputClient->SendOutputEvent(e);
