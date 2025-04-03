@@ -142,10 +142,15 @@ void *ServerSetup(void *object) {
         dataSocket = accept(socketFd, nullptr, nullptr);
         if (dataSocket < 0) {
             LOG_E("accept: %s", strerror(errno));
+            continue;
         }
         pthread_t t;
         pthread_create(&t, nullptr, reinterpret_cast<void *(*)(void *)>(ServerStart), object);
         LOG_I("accept dataSocket: %d", dataSocket);
+
+        if(outputSocket>0){
+            continue;
+        }
 
         outputSocket = accept(socketFd, nullptr, nullptr);
         if (outputSocket < 0) {
@@ -265,12 +270,12 @@ void ServerStart(void *object) {
                         notifyWindowChanged(1);
                         vm->DetachCurrentThread();
 
-                        struct epoll_event outputEvent;
-                        timerEvent.events = EPOLLIN;
-                        timerEvent.data.fd = outputSocket;
-                        epoll_ctl(epollFd, EPOLL_CTL_DEL, outputSocket, &outputEvent);
-                        close(outputSocket);
-                        outputSocket = -1;
+//                        struct epoll_event outputEvent;
+//                        outputEvent.events = EPOLLIN;
+//                        outputEvent.data.fd = outputSocket;
+//                        epoll_ctl(epollFd, EPOLL_CTL_DEL, outputSocket, &outputEvent);
+//                        close(outputSocket);
+//                        outputSocket = -1;
 
                         close(dataSocket);
                         dataSocket = -1;

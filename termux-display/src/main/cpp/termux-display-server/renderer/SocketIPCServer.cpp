@@ -62,7 +62,7 @@ SocketIPCServer *SocketIPCServer::GetInstance() {
 }
 
 void SocketIPCServer::Init(AHardwareBuffer *hwBuffer, JNIEnv *e, jobject sf) {
-    DEBUG_LOG();
+//    DEBUG_LOG();
     env = e;
     surface = sf;
     buffer = hwBuffer;
