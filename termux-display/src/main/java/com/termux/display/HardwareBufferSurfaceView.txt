@@ -1,0 +1,546 @@
+package com.termux.display;
+
+import android.content.Context;
+import android.graphics.PixelFormat;
+import android.hardware.HardwareBuffer;
+import android.opengl.EGL14;
+import android.opengl.EGLConfig;
+import android.opengl.EGLContext;
+import android.opengl.EGLDisplay;
+import android.opengl.EGLObjectHandle;
+import android.opengl.EGLSurface;
+import android.opengl.GLES11Ext;
+import android.opengl.GLES20;
+import android.os.Build;
+import android.view.Choreographer;
+import android.view.Surface;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
+import com.termux.gui.hbuffers.HBuffers;
+import com.termux.gui.protocol.shared.v0.RawInputConnection;
+
+import java.lang.RuntimeException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.charset.Charset;
+
+/**
+ * A SurfaceView that can draw a shared HardwareBuffer to the Surface.
+ */
+public class HardwareBufferSurfaceView extends SurfaceView implements Choreographer.FrameCallback {
+
+    public static class Config {
+        public enum OnDimensionMismatch {
+            CENTER_AXIS,
+            STICK_TOPLEFT
+        }
+
+        public OnDimensionMismatch x = OnDimensionMismatch.CENTER_AXIS;
+        public OnDimensionMismatch y = OnDimensionMismatch.CENTER_AXIS;
+        public int backgroundColor = 0xff000000;
+    }
+
+    public interface SurfaceChangedListener {
+        void onSurfaceChanged(int width, int height);
+    }
+
+    public interface FrameCallbackListener {
+        void onSurfaceFrame(long timestamp);
+    }
+
+    @SuppressWarnings("EqualsOrHashCode")
+    public static class EGLImageKHR extends EGLObjectHandle {
+        public static final EGLImageKHR EGL_NO_IMAGE_KHR = new EGLImageKHR(0);
+
+        private EGLImageKHR(long handle) {
+            super(handle);
+        }
+
+        private static native boolean nativeEglDestroyImageKHR(long disp, long img);
+        private static native void nativeEGLImageTargetTexture2DOES(long img);
+
+        public static void eglImageTargetTexture2DOES(EGLImageKHR img) {
+            nativeEGLImageTargetTexture2DOES(img.nativeHandle);
+        }
+
+        public static boolean eglDestroyImageKHR(EGLDisplay d, EGLImageKHR img) {
+            return nativeEglDestroyImageKHR(d.nativeHandle, img.nativeHandle);
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (other instanceof EGLImageKHR && ((EGLImageKHR) other).nativeHandle == nativeHandle) {
+                return true;
+            }
+            return false;
+        }
+    }
+
+    private static String vertexCode = "";
+    private static String fragmentCode = "";
+
+    private static void checkEGLError(String msg) {
+        int err = EGL14.eglGetError();
+        if (err != EGL14.EGL_SUCCESS) {
+            System.out.printf("%s: %x\n", msg, err);
+        }
+    }
+
+    private static void logGLESError(String msg) {
+        int err = GLES20.glGetError();
+        if (err != GLES20.GL_NO_ERROR) {
+            System.out.printf("%s: %x\n", msg, err);
+        }
+    }
+
+    private final Object RENDER_LOCK = new Object();
+    private OnKeyListener keyListener;
+    private SurfaceChangedListener surfaceChangedListener;
+    private FrameCallbackListener frameCallback;
+    private Config config = new Config();
+
+    private HardwareBuffer buffer;
+    private EGLImageKHR bufferImage = EGLImageKHR.EGL_NO_IMAGE_KHR;
+    private EGLDisplay disp = EGL14.EGL_NO_DISPLAY;
+    private EGLConfig eglConfig = null;
+    private EGLContext gl = EGL14.EGL_NO_CONTEXT;
+    private Surface surface = null;
+    private EGLSurface eglSurface = EGL14.EGL_NO_SURFACE;
+    private int surfaceWidth = 0;
+    private int surfaceHeight = 0;
+    private boolean surfaceChanged = false;
+    private ByteBuffer posBuffer = ByteBuffer.allocateDirect(8 * 4);
+    private int posI = -1;
+    private ByteBuffer tposBuffer = ByteBuffer.allocateDirect(8 * 4);
+    private int tposI = -1;
+    private int prog = -1;
+
+    public HardwareBufferSurfaceView(Context context) {
+        super(context);
+        posBuffer.order(ByteOrder.nativeOrder());
+        tposBuffer.order(ByteOrder.nativeOrder());
+
+        synchronized (HardwareBufferSurfaceView.class) {
+            if (vertexCode.isEmpty()) {
+                try {
+                    vertexCode = new String(context.getAssets().open("SurfaceShader.vert").readAllBytes(), Charset.defaultCharset());
+                    fragmentCode = new String(context.getAssets().open("SurfaceShader.frag").readAllBytes(), Charset.defaultCharset());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        getHolder().setFormat(PixelFormat.RGBA_8888);
+        setZOrderOnTop(true);
+        initEGL();
+        getHolder().addCallback(callback);
+    }
+
+    public void setBuffer(HardwareBuffer b) {
+        synchronized (RENDER_LOCK) {
+            buffer = b;
+            if (disp != EGL14.EGL_NO_DISPLAY) {
+                if (bufferImage != EGLImageKHR.EGL_NO_IMAGE_KHR) {
+                    EGLImageKHR.eglDestroyImageKHR(disp, bufferImage);
+                    bufferImage = EGLImageKHR.EGL_NO_IMAGE_KHR;
+                }
+                render();
+            }
+        }
+    }
+
+    public boolean setFrameRate(float rate) {
+        Surface s = surface;
+        synchronized (RENDER_LOCK) {
+            if (s != null && rate > 0) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    s.setFrameRate(rate, Surface.FRAME_RATE_COMPATIBILITY_DEFAULT);
+                }
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    public HardwareBuffer getBuffer() {
+        return buffer;
+    }
+
+    private void render() {
+        synchronized (RENDER_LOCK) {
+            initEGL();
+            if (buffer != null && surface != null) {
+                if (eglSurface == EGL14.EGL_NO_SURFACE) {
+                    eglSurface = EGL14.eglCreateWindowSurface(disp, eglConfig, surface, null, 0);
+                    if (eglSurface == EGL14.EGL_NO_SURFACE) {
+                        int err = EGL14.eglGetError();
+                        deinitEGL();
+                        throw new RuntimeException(String.format("Could create EGLSurface: 0x%x", err));
+                    }
+                }
+
+                initGLES();
+                if (!EGL14.eglMakeCurrent(disp, eglSurface, eglSurface, gl)) {
+                    int err = EGL14.eglGetError();
+                    if (err == EGL14.EGL_CONTEXT_LOST) {
+                        EGL14.eglDestroyContext(disp, gl);
+                        gl = EGL14.EGL_NO_CONTEXT;
+                        prog = -1;
+                        posI = -1;
+                        initEGL();
+                        initGLES();
+                    } else {
+                        throw new RuntimeException(String.format("Could not make GLES2 context current: 0x%x", err));
+                    }
+                }
+                if (surfaceChanged) {
+                    surfaceChanged = false;
+                    GLES20.glViewport(0, 0, surfaceWidth, surfaceHeight);
+                    logGLESError("viewport");
+                }
+
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                    throw new RuntimeException("HardwareBufferSurfaceView used on Android < 8.0");
+                }
+
+                int bWidth = buffer.getWidth();
+                int bHeight = buffer.getHeight();
+
+                float[] vertexArray = {
+                    -1f, -1f, // bottom left vertex
+                    -1f, 1f,  // top left vertex
+                    1f, -1f,  // bottom right vertex
+                    1f, 1f    // top right vertex
+                };
+
+                float[] textureArray = {
+                    0f, 0f,   // bottom left vertex
+                    0f, 1f,   // top left vertex
+                    1f, 0f,   // bottom right vertex
+                    1f, 1f    // top right vertex
+                };
+
+                if (bWidth != surfaceWidth) {
+                    switch (config.x) {
+                        case CENTER_AXIS:
+                            float marginPX = (bWidth - surfaceWidth) / 2f;
+                            float marginNDC = marginPX * (2f / surfaceWidth);
+                            vertexArray[0] -= marginNDC;
+                            vertexArray[2] -= marginNDC;
+                            vertexArray[4] += marginNDC;
+                            vertexArray[6] += marginNDC;
+                            break;
+                        case STICK_TOPLEFT:
+                            float ratio = bWidth / (float) surfaceWidth;
+                            if (ratio < 1f) {
+                                vertexArray[4] *= ratio;
+                                vertexArray[6] *= ratio;
+                            }
+                            if (ratio > 1f) {
+                                textureArray[4] = 1f / ratio;
+                                textureArray[6] = 1f / ratio;
+                            }
+                            break;
+                    }
+                }
+                if (bHeight != surfaceHeight) {
+                    switch (config.y) {
+                        case CENTER_AXIS:
+                            float marginPY = (bHeight - surfaceHeight) / 2f;
+                            float marginNDCY = marginPY * (2f / surfaceHeight);
+                            vertexArray[1] -= marginNDCY;
+                            vertexArray[3] += marginNDCY;
+                            vertexArray[5] -= marginNDCY;
+                            vertexArray[7] += marginNDCY;
+                            break;
+                        case STICK_TOPLEFT:
+                            float ratio = bHeight / (float) surfaceHeight;
+                            if (ratio < 1f) {
+                                vertexArray[1] *= ratio;
+                                vertexArray[5] *= ratio;
+                            }
+                            if (ratio > 1f) {
+                                textureArray[1] = 1f - 1f / ratio;
+                                textureArray[5] = 1f - 1f / ratio;
+                            }
+                            break;
+                    }
+                }
+
+                for (int i = 0; i < vertexArray.length; i++) {
+                    posBuffer.put(vertexArray[i]);
+                    tposBuffer.put(textureArray[i]);
+                }
+
+                GLES20.glVertexAttribPointer(posI, 2, GLES20.GL_FLOAT, false, 0, posBuffer);
+                logGLESError("vertexAttribPointer");
+                GLES20.glVertexAttribPointer(tposI, 2, GLES20.GL_FLOAT, false, 0, tposBuffer);
+                logGLESError("vertexAttribPointer");
+
+                GLES20.glClearColor(
+                    (config.backgroundColor & 0xff) / 255f,
+                    ((config.backgroundColor >> 8) & 0xff) / 255f,
+                    ((config.backgroundColor >> 16) & 0xff) / 255f,
+                    ((config.backgroundColor >> 24) & 0xff) / 255f);
+                logGLESError("glClearColor");
+                GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+                logGLESError("glClear");
+
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+                logGLESError("drawArrays");
+
+                EGL14.eglSwapBuffers(disp, eglSurface);
+                checkEGLError("swap buffers");
+
+                EGL14.eglMakeCurrent(disp, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT);
+            }
+        }
+    }
+
+    private void createBufferImage() {
+        if (bufferImage == EGLImageKHR.EGL_NO_IMAGE_KHR && buffer != null && disp != EGL14.EGL_NO_DISPLAY) {
+            bufferImage = new EGLImageKHR(HBuffers.hardwareBufferToEGLImageKHR(disp, buffer));
+            if (bufferImage == EGLImageKHR.EGL_NO_IMAGE_KHR) {
+                deinitEGL();
+                throw new RuntimeException("Could create EGLImageKHR: " + EGL14.eglGetError());
+            }
+        }
+    }
+
+    private void initGLES() {
+        if (eglConfig == null)
+            initEGL();
+        if (gl == EGL14.EGL_NO_CONTEXT) {
+            if (!EGL14.eglBindAPI(EGL14.EGL_OPENGL_ES_API)) {
+                int err = EGL14.eglGetError();
+                deinitEGL();
+                throw new RuntimeException(String.format("Could not bind GLES: 0x%x", err));
+            }
+            gl = EGL14.eglCreateContext(
+                disp, eglConfig, EGL14.EGL_NO_CONTEXT, new int[]{
+                    EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
+                    EGL14.EGL_NONE
+                }, 0
+            );
+            if (gl == EGL14.EGL_NO_CONTEXT) {
+                int err = EGL14.eglGetError();
+                deinitEGL();
+                throw new RuntimeException(String.format("Could not create GLES2 context: 0x%x", err));
+            }
+            if (eglSurface != EGL14.EGL_NO_SURFACE) {
+                if (!EGL14.eglMakeCurrent(disp, eglSurface, eglSurface, gl)) {
+                    int err = EGL14.eglGetError();
+                    deinitEGL();
+                    throw new RuntimeException(String.format("Could not make GLES2 context current: 0x%x", err));
+                }
+            }
+        }
+        if (eglSurface != EGL14.EGL_NO_SURFACE) {
+            if (!EGL14.eglMakeCurrent(disp, eglSurface, eglSurface, gl)) {
+                int err = EGL14.eglGetError();
+                deinitEGL();
+                throw new RuntimeException(String.format("Could not make GLES2 context current: 0x%x", err));
+            }
+            String exts = GLES20.glGetString(GLES20.GL_EXTENSIONS);
+            logGLESError("get gles2 extensions");
+            if (exts == null) {
+                deinitEGL();
+                throw new RuntimeException("Could not query GLES2 extensions");
+            }
+            if (!exts.contains("GL_OES_EGL_image_external")) {
+                deinitEGL();
+                throw new RuntimeException("GLES2 doesn't have the GL_OES_EGL_image_external extension");
+            }
+            if (buffer != null && bufferImage == EGLImageKHR.EGL_NO_IMAGE_KHR) {
+                createBufferImage();
+                GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE1);
+                logGLESError("bind external texture");
+                GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
+                logGLESError("glActiveTexture");
+                EGLImageKHR.eglImageTargetTexture2DOES(bufferImage);
+                checkEGLError("eglImageTargetTexture2DOES");
+                GLES20.glTexParameteri(
+                    GLES11Ext.GL_TEXTURE_EXTERNAL_OES,
+                    GLES20.GL_TEXTURE_MIN_FILTER,
+                    GLES20.GL_NEAREST
+                );
+                logGLESError("set min filter");
+                GLES20.glTexParameteri(
+                    GLES11Ext.GL_TEXTURE_EXTERNAL_OES,
+                    GLES20.GL_TEXTURE_MAG_FILTER,
+                    GLES20.GL_NEAREST
+                );
+                logGLESError("set mag filter");
+            }
+            if (prog == -1) {
+                int frag = GLES20.glCreateShader(GLES20.GL_FRAGMENT_SHADER);
+                logGLESError("create shader");
+                GLES20.glShaderSource(frag, fragmentCode);
+                logGLESError("shader source");
+                GLES20.glCompileShader(frag);
+                logGLESError("compile shader");
+                int vert = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER);
+                logGLESError("create shader");
+                GLES20.glShaderSource(vert, vertexCode);
+                logGLESError("shader source");
+                GLES20.glCompileShader(vert);
+                logGLESError("compile shader");
+                prog = GLES20.glCreateProgram();
+                logGLESError("create program");
+                GLES20.glAttachShader(prog, vert);
+                logGLESError("attach vertex shader");
+                GLES20.glAttachShader(prog, frag);
+                logGLESError("attach fragment shader shader");
+                GLES20.glLinkProgram(prog);
+                int err = GLES20.glGetError();
+                int[] status = new int[1];
+                GLES20.glGetProgramiv(prog, GLES20.GL_LINK_STATUS, status, 0);
+                if (err != GLES20.GL_NO_ERROR || status[0] != GLES20.GL_TRUE) {
+                    System.out.println("GLES error link program: " + err);
+                    System.out.println(GLES20.glGetProgramInfoLog(prog));
+                    System.out.println(GLES20.glGetShaderInfoLog(vert));
+                    System.out.println(GLES20.glGetShaderInfoLog(frag));
+                }
+                GLES20.glUseProgram(prog);
+                logGLESError("use program");
+            }
+            if (prog != -1 && bufferImage != EGLImageKHR.EGL_NO_IMAGE_KHR) {
+                int posS = GLES20.glGetUniformLocation(prog, "hbSampler");
+                logGLESError("glGetUniformLocation");
+                GLES20.glUniform1i(posS, 1);
+            }
+            if (posI == -1) {
+                posI = GLES20.glGetAttribLocation(prog, "pos");
+                logGLESError("get attrib location");
+                GLES20.glEnableVertexAttribArray(posI);
+                logGLESError("enableVertexAttribArray");
+            }
+            if (tposI == -1) {
+                tposI = GLES20.glGetAttribLocation(prog, "tpos");
+                logGLESError("get attrib location");
+                GLES20.glEnableVertexAttribArray(tposI);
+                logGLESError("enableVertexAttribArray");
+                GLES20.glVertexAttribPointer(tposI, 2, GLES20.GL_FLOAT, false, 0, tposBuffer);
+                logGLESError("vertexAttribPointer");
+            }
+            EGL14.eglMakeCurrent(disp, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT);
+        }
+    }
+
+    private void deinitEGL() {
+        if (disp != EGL14.EGL_NO_DISPLAY) {
+            if (gl != EGL14.EGL_NO_CONTEXT) {
+                EGL14.eglDestroyContext(disp, gl);
+                gl = EGL14.EGL_NO_CONTEXT;
+                EGL14.eglMakeCurrent(disp, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT);
+                posI = -1;
+                prog = -1;
+            }
+            if (eglSurface != EGL14.EGL_NO_SURFACE) {
+                EGL14.eglDestroySurface(disp, eglSurface);
+                eglSurface = EGL14.EGL_NO_SURFACE;
+            }
+            if (bufferImage != EGLImageKHR.EGL_NO_IMAGE_KHR) {
+                EGLImageKHR.eglDestroyImageKHR(disp, bufferImage);
+                bufferImage = EGLImageKHR.EGL_NO_IMAGE_KHR;
+            }
+            EGL14.eglTerminate(disp);
+            disp = EGL14.EGL_NO_DISPLAY;
+        }
+    }
+
+    private void initEGL() {
+        if (disp == EGL14.EGL_NO_DISPLAY) {
+            disp = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY);
+            if (disp == EGL14.EGL_NO_DISPLAY) {
+                throw new RuntimeException("Unable to get EGL14 display");
+            }
+            int[] version = new int[2];
+            if (!EGL14.eglInitialize(disp, version, 0, version, 1)) {
+                disp = EGL14.EGL_NO_DISPLAY;
+                throw new RuntimeException("Unable to initialize EGL14");
+            }
+
+            int[] attribList = {
+                EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
+                EGL14.EGL_SURFACE_TYPE, EGL14.EGL_WINDOW_BIT,
+                EGL14.EGL_NONE
+            };
+
+            EGLConfig[] configs = new EGLConfig[1];
+            int[] numConfigs = new int[1];
+            if (!EGL14.eglChooseConfig(disp, attribList, 0, configs, 0, configs.length, numConfigs, 0)) {
+                throw new RuntimeException("Unable to find valid EGLConfig");
+            }
+            eglConfig = configs[0];
+        }
+    }
+
+    @Override
+    public void doFrame(long frameTimeNanos) {
+        render();
+        if (frameCallback != null) {
+            frameCallback.onSurfaceFrame(frameTimeNanos);
+        }
+        Choreographer.getInstance().postFrameCallback(this);
+    }
+
+    @Override
+    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        synchronized (RENDER_LOCK) {
+            surfaceWidth = width;
+            surfaceHeight = height;
+            surfaceChanged = true;
+            if (surfaceChangedListener != null) {
+                surfaceChangedListener.onSurfaceChanged(width, height);
+            }
+            render();
+        }
+    }
+
+    @Override
+    public void surfaceCreated(SurfaceHolder holder) {
+        surface = holder.getSurface();
+        render();
+    }
+
+    @Override
+    public void surfaceDestroyed(SurfaceHolder holder) {
+        synchronized (RENDER_LOCK) {
+            surface = null;
+            deinitEGL();
+        }
+    }
+
+    public void setSurfaceChangedListener(SurfaceChangedListener listener) {
+        this.surfaceChangedListener = listener;
+    }
+
+    public void setFrameCallbackListener(FrameCallbackListener listener) {
+        this.frameCallback = listener;
+    }
+
+    public void setKeyListener(OnKeyListener listener) {
+        this.keyListener = listener;
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyListener != null) {
+            return keyListener.onKey(this, keyCode, event);
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keyListener != null) {
+            return keyListener.onKey(this, keyCode, event);
+        }
+        return super.onKeyUp(keyCode, event);
+    }
+}
