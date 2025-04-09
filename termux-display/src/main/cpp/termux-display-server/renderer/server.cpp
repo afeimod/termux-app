@@ -209,8 +209,8 @@ void ServerStart(void *object) {
         struct itimerspec timer_spec;
         timer_spec.it_interval.tv_sec = 1; // 1-second interval
 //        timer_spec.it_interval.tv_nsec = 30000000;
-        timer_spec.it_interval.tv_nsec = 0;
-        timer_spec.it_value.tv_sec = 0;
+//        timer_spec.it_interval.tv_nsec = 0;
+//        timer_spec.it_value.tv_sec = 0;
         timer_spec.it_value.tv_nsec = 30000000;//初始延迟秒触发
 
         if (timerfd_settime(timer_fd, 0, &timer_spec, NULL) == -1) {
@@ -254,12 +254,8 @@ void ServerStart(void *object) {
                     // Add your code to handle timer expiration asynchronously
                     if (isRunning && serverRenderer) {
                         serverRenderer->Draw();
-                        if (outputClient && cnt < 2) {
-//                            LOG_I("output finished!");
-                            OutputEvent e = {.type=13};
-                            outputClient->SendOutputEvent(e);
-                        }
-                        cnt++;
+                        OutputEvent e = {.type=13};
+                        outputClient->SendOutputEvent(e);
                     }
                 } else if (events[i].data.fd == outputSocket) {
                     OutputEvent ev;
