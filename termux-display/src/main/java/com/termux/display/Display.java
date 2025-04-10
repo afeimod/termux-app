@@ -70,6 +70,8 @@ public class Display {
 
     static native public void sendUnicodeEvent(int code);
 
+    static native public void onFrameComplete(long frameTimeNanos);
+
     static {
         System.loadLibrary("Display");
     }

@@ -110,33 +110,6 @@ void *ServerSetup(void *object) {
         LOG_E("epoll_create failed:%s", strerror(errno));
         return nullptr;
     }
-
-//    while (1) {
-//        // accept
-//        int currentSocket = accept(socketFd, nullptr, nullptr);
-//        if (currentSocket < 0) {
-//            LOG_E("accept: %s", strerror(errno));
-//            break;
-//        }
-//        if (dataSocket < 1) {
-//            dataSocket = currentSocket;
-//            pthread_t t;
-//            pthread_create(&t, nullptr, reinterpret_cast<void *(*)(void *)>(ServerStart), object);
-//            LOG_I("accept dataSocket: %d", currentSocket);
-//        } else {
-//            outputSocket = currentSocket;
-//            outputClient = new OutputClient;
-//            outputClient->Init(outputSocket);
-//
-//            struct epoll_event outputEvent;
-//            outputEvent.events = EPOLLIN;
-//            outputEvent.data.fd = outputSocket;
-//            if (epoll_ctl(epollFd, EPOLL_CTL_ADD, outputSocket, &outputEvent) == -1) {
-//                LOG_E("output epoll_ctl failed:%s", strerror(errno));
-//            }
-//            LOG_I("accept outputSocket: %d", currentSocket);
-//        }
-//    }
     while (true) {
         // accept
         dataSocket = accept(socketFd, nullptr, nullptr);
@@ -252,11 +225,7 @@ void ServerStart(void *object) {
                     }
 //                    LOG_I("Server Timer expired!");
                     // Add your code to handle timer expiration asynchronously
-                    if (isRunning && serverRenderer) {
-                        serverRenderer->Draw();
-                        OutputEvent e = {.type=13};
-                        outputClient->SendOutputEvent(e);
-                    }
+
                 } else if (events[i].data.fd == outputSocket) {
                     OutputEvent ev;
                     read(outputSocket, &ev, sizeof(ev));
@@ -284,6 +253,10 @@ void ServerStart(void *object) {
                         hwBuffer = nullptr;
 
                         return;
+                    }else if(ev.type == EVENT_DRAW_FRAME){
+                        if (isRunning && serverRenderer) {
+                            serverRenderer->Draw();
+                        }
                     }
                 }
             }
@@ -297,3 +270,13 @@ void SendOutputEvent(OutputEvent ev) {
     }
 }
 
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_termux_display_Display_onFrameComplete(JNIEnv *env, jclass clazz, jlong frame_time_nanos) {
+    if (isRunning && serverRenderer) {
+        OutputEvent e = {.type=EVENT_FRAME_COMPLETE,};
+        e.frame={.timestamp=static_cast<uint64_t>(frame_time_nanos)};
+        outputClient->SendOutputEvent(e);
+    }
+}
