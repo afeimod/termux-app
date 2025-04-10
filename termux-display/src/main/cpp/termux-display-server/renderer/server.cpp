@@ -180,10 +180,10 @@ void ServerStart(void *object) {
         }
 
         struct itimerspec timer_spec;
-        timer_spec.it_interval.tv_sec = 1; // 1-second interval
-//        timer_spec.it_interval.tv_nsec = 30000000;
-//        timer_spec.it_interval.tv_nsec = 0;
-//        timer_spec.it_value.tv_sec = 0;
+//        timer_spec.it_interval.tv_sec = 1; // 1-second interval
+        timer_spec.it_interval.tv_nsec = 30000000;
+        timer_spec.it_interval.tv_nsec = 0;
+        timer_spec.it_value.tv_sec = 0;
         timer_spec.it_value.tv_nsec = 30000000;//初始延迟秒触发
 
         if (timerfd_settime(timer_fd, 0, &timer_spec, NULL) == -1) {
@@ -225,14 +225,14 @@ void ServerStart(void *object) {
                     }
 //                    LOG_I("Server Timer expired!");
                     // Add your code to handle timer expiration asynchronously
-                    if (isRunning && serverRenderer) {
-                        serverRenderer->Draw();
-                        termux_event e = {.type=EVENT_FRAME_COMPLETE,};
-                        outputClient->SendOutputEvent(e);
-                    }
+//                    if (isRunning && serverRenderer) {
+//                        serverRenderer->Draw();
+//                        server_termux_event e = {.type=EVENT_FRAME_COMPLETE,};
+//                        outputClient->SendOutputEvent(e);
+//                    }
 
                 } else if (events[i].data.fd == outputSocket) {
-                    termux_event ev;
+                    server_termux_event ev;
                     read(outputSocket, &ev, sizeof(ev));
                     if (ev.type == EVENT_CLIENT_EXIT) {
                         vm->AttachCurrentThread(&env, nullptr);
@@ -269,7 +269,7 @@ void ServerStart(void *object) {
     }
 }
 
-void SendOutputEvent(termux_event ev) {
+void SendOutputEvent(server_termux_event ev) {
     if (outputClient) {
         outputClient->SendOutputEvent(ev);
     }
@@ -280,8 +280,8 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_termux_display_Display_onFrameComplete(JNIEnv *env, jclass clazz, jlong frame_time_nanos) {
     if (isRunning && serverRenderer) {
-//        termux_event e = {.type=EVENT_FRAME_COMPLETE,};
-//        e.frame={.timestamp=static_cast<uint64_t>(frame_time_nanos)};
-//        outputClient->SendOutputEvent(e);
+        server_termux_event e = {.type=EVENT_FRAME_COMPLETE,};
+        e.frame={.timestamp=static_cast<uint64_t>(frame_time_nanos)};
+        outputClient->SendOutputEvent(e);
     }
 }

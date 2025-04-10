@@ -163,16 +163,16 @@ public class LorieView extends SurfaceView implements InputStub {
         cursorLocker = new CursorLocker(this);
         if (renderMode == RenderMode.BUILTIN_RENDER_SEVER) {
             displayAdapter = new Display();
-//            mFrameCallback = new Choreographer.FrameCallback() {
-//                @Override
-//                public void doFrame(long frameTimeNanos) {
-//                    if (displayAdapter != null) {
-//                        Display.onFrameComplete(frameTimeNanos);
-//                        Choreographer.getInstance().postFrameCallback(this);
-//                    }
-//                }
-//            };
-//            Choreographer.getInstance().postFrameCallback(mFrameCallback);
+            mFrameCallback = new Choreographer.FrameCallback() {
+                @Override
+                public void doFrame(long frameTimeNanos) {
+                    if (displayAdapter != null) {
+                        Display.onFrameComplete(frameTimeNanos);
+                        Choreographer.getInstance().postFrameCallback(this);
+                    }
+                }
+            };
+            Choreographer.getInstance().postFrameCallback(mFrameCallback);
         }
     }
 
