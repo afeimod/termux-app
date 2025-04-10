@@ -180,11 +180,11 @@ void ServerStart(void *object) {
         }
 
         struct itimerspec timer_spec;
-//        timer_spec.it_interval.tv_sec = 1; // 1-second interval
+        timer_spec.it_interval.tv_sec = 0; // 1-second interval
         timer_spec.it_interval.tv_nsec = 30000000;
-        timer_spec.it_interval.tv_nsec = 0;
-        timer_spec.it_value.tv_sec = 0;
-        timer_spec.it_value.tv_nsec = 30000000;//初始延迟秒触发
+//        timer_spec.it_interval.tv_nsec = 0;
+        timer_spec.it_value.tv_sec = 2;
+        timer_spec.it_value.tv_nsec = 0;//初始延迟秒触发
 
         if (timerfd_settime(timer_fd, 0, &timer_spec, NULL) == -1) {
             LOG_E("timerfd_settime failed:%s", strerror(errno));
@@ -225,11 +225,17 @@ void ServerStart(void *object) {
                     }
 //                    LOG_I("Server Timer expired!");
                     // Add your code to handle timer expiration asynchronously
-//                    if (isRunning && serverRenderer) {
+                    if (isRunning && serverRenderer) {
+//                        if (cnt<2){
+//                            serverRenderer->Draw();
+//                            cnt++;
+//                        }
+
+                        server_termux_event e = {.type=EVENT_FRAME_COMPLETE,};
+                        outputClient->SendOutputEvent(e);
 //                        serverRenderer->Draw();
-//                        server_termux_event e = {.type=EVENT_FRAME_COMPLETE,};
-//                        outputClient->SendOutputEvent(e);
-//                    }
+//                        LOG_I("serverRenderer->Draw();");
+                    }
 
                 } else if (events[i].data.fd == outputSocket) {
                     server_termux_event ev;
@@ -260,6 +266,7 @@ void ServerStart(void *object) {
                         return;
                     }else if(ev.type == EVENT_DRAW_FRAME){
                         if (isRunning && serverRenderer) {
+                            LOG_I("EVENT_DRAW_FRAME");
                             serverRenderer->Draw();
                         }
                     }
@@ -279,9 +286,11 @@ void SendOutputEvent(server_termux_event ev) {
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_termux_display_Display_onFrameComplete(JNIEnv *env, jclass clazz, jlong frame_time_nanos) {
-    if (isRunning && serverRenderer) {
-        server_termux_event e = {.type=EVENT_FRAME_COMPLETE,};
-        e.frame={.timestamp=static_cast<uint64_t>(frame_time_nanos)};
-        outputClient->SendOutputEvent(e);
-    }
+//    if (isRunning && serverRenderer) {
+//        server_termux_event e = {.type=EVENT_FRAME_COMPLETE,};
+//        e.frame={.timestamp=static_cast<uint64_t>(frame_time_nanos)};
+//        outputClient->SendOutputEvent(e);
+//        LOG_I("onFrameComplete");
+//    }
+
 }
