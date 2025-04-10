@@ -15,6 +15,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.preference.PreferenceManager;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.Choreographer;
 import android.view.KeyEvent;
 import android.view.Surface;
 import android.view.SurfaceHolder;
@@ -79,20 +80,23 @@ public class LorieView extends SurfaceView implements InputStub {
     private Callback mCallback;
     private final Point p = new Point();
     private SurfaceHolder mHolder;
-    public void updateWindow(){
-        if (mHolder!=null){
-            if(mHolder.getSurface()==null){
+
+    public void updateWindow() {
+        if (mHolder != null) {
+            if (mHolder.getSurface() == null) {
                 Log.d("SurfaceChangedListener", "Surface was null");
                 return;
             }
             int width = getMeasuredWidth();
             int height = getMeasuredHeight();
             Log.d("SurfaceChangedListener", "Surface was update: " + width + "x" + height);
-            if (renderMode==RenderMode.BUILTIN_RENDER_SEVER){
+            if (renderMode == RenderMode.BUILTIN_RENDER_SEVER) {
                 Display.sendWindowChange(mHolder.getSurface());
             }
         }
     }
+
+    private Choreographer.FrameCallback mFrameCallback;
     private final SurfaceHolder.Callback mSurfaceCallback = new SurfaceHolder.Callback() {
         @Override
         public void surfaceCreated(@NonNull SurfaceHolder holder) {
@@ -122,14 +126,15 @@ public class LorieView extends SurfaceView implements InputStub {
 
         @Override
         public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
-            if (mCallback != null&&renderMode == RenderMode.BUILTIN_X_SEVER)
+            if (mCallback != null && renderMode == RenderMode.BUILTIN_X_SEVER)
                 mCallback.changed(holder.getSurface(), 0, 0, 0, 0);
         }
     };
 
-    public SurfaceHolder.Callback getSurfaceHolderCallback(){
+    public SurfaceHolder.Callback getSurfaceHolderCallback() {
         return mSurfaceCallback;
     }
+
     public LorieView(Context context) {
         super(context);
         init();
@@ -158,6 +163,16 @@ public class LorieView extends SurfaceView implements InputStub {
         cursorLocker = new CursorLocker(this);
         if (renderMode == RenderMode.BUILTIN_RENDER_SEVER) {
             displayAdapter = new Display();
+            mFrameCallback = new Choreographer.FrameCallback() {
+                @Override
+                public void doFrame(long frameTimeNanos) {
+                    if (displayAdapter != null) {
+                        Display.onFrameComplete(frameTimeNanos);
+                        Choreographer.getInstance().postFrameCallback(this);
+                    }
+                }
+            };
+            Choreographer.getInstance().postFrameCallback(mFrameCallback);
         }
     }
 
