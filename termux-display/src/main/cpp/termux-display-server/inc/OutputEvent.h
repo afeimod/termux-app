@@ -25,19 +25,21 @@ typedef enum {
     EVENT_DRAW_FRAME,
 } event_type;
 #endif
+#ifndef TERMUX_EVENT
+#define TERMUX_EVENT
 typedef struct {
     uint8_t num_pointers;
     uint8_t t;
     uint16_t type, id, x, y;
-} output_touch_event;
+} touch_event;
 typedef union {
     uint8_t type;
     struct {
         uint8_t t;
         uint16_t width, height, framerate;
     } screenSize;
-    output_touch_event touch;
-    output_touch_event touch_events[4];
+    touch_event touch;
+    touch_event touch_events[4];
     struct {
         uint8_t t;
         float x, y;
@@ -75,5 +77,6 @@ typedef union {
     struct {
         uint64_t timestamp;
     } frame;
-} OutputEvent;
+} termux_event;
+#endif
 #endif

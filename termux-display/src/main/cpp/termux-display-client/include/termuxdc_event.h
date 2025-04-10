@@ -25,6 +25,8 @@ typedef enum {
     EVENT_DRAW_FRAME,
 } event_type;
 #endif
+#ifndef TERMUX_EVENT
+#define TERMUX_EVENT
 typedef struct {
     uint8_t num_pointers;
     uint8_t t;
@@ -76,6 +78,7 @@ typedef union {
         uint64_t timestamp;
     } frame;
 } termuxdc_event;
+#endif
 typedef enum {
     /// No modifier pressed.
     TDC_MOD_NONE = 0,

@@ -7,7 +7,7 @@ public:
     void Init(int socket);
     void Reset();
     void Destroy();
-    void SendOutputEvent(OutputEvent ev);
+    void SendOutputEvent(termux_event ev);
 private:
     int dataSocket;
     ~OutputClient();

@@ -24,7 +24,7 @@ void OutputClient::Destroy() {
     Reset();
 }
 
-void OutputClient::SendOutputEvent(OutputEvent ev) {
+void OutputClient::SendOutputEvent(termux_event ev) {
     send(dataSocket, &ev, sizeof(ev), MSG_DONTWAIT);
 }
 

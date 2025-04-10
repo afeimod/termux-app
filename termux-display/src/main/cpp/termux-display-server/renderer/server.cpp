@@ -225,9 +225,14 @@ void ServerStart(void *object) {
                     }
 //                    LOG_I("Server Timer expired!");
                     // Add your code to handle timer expiration asynchronously
+                    if (isRunning && serverRenderer) {
+                        serverRenderer->Draw();
+                        termux_event e = {.type=EVENT_FRAME_COMPLETE,};
+                        outputClient->SendOutputEvent(e);
+                    }
 
                 } else if (events[i].data.fd == outputSocket) {
-                    OutputEvent ev;
+                    termux_event ev;
                     read(outputSocket, &ev, sizeof(ev));
                     if (ev.type == EVENT_CLIENT_EXIT) {
                         vm->AttachCurrentThread(&env, nullptr);
@@ -264,7 +269,7 @@ void ServerStart(void *object) {
     }
 }
 
-void SendOutputEvent(OutputEvent ev) {
+void SendOutputEvent(termux_event ev) {
     if (outputClient) {
         outputClient->SendOutputEvent(ev);
     }
@@ -275,8 +280,8 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_termux_display_Display_onFrameComplete(JNIEnv *env, jclass clazz, jlong frame_time_nanos) {
     if (isRunning && serverRenderer) {
-        OutputEvent e = {.type=EVENT_FRAME_COMPLETE,};
-        e.frame={.timestamp=static_cast<uint64_t>(frame_time_nanos)};
-        outputClient->SendOutputEvent(e);
+//        termux_event e = {.type=EVENT_FRAME_COMPLETE,};
+//        e.frame={.timestamp=static_cast<uint64_t>(frame_time_nanos)};
+//        outputClient->SendOutputEvent(e);
     }
 }

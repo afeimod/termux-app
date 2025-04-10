@@ -18,4 +18,4 @@ void DisplayServerInit();
 
 void ServerStart(void *);
 
-void SendOutputEvent(OutputEvent);
+void SendOutputEvent(termux_event);
