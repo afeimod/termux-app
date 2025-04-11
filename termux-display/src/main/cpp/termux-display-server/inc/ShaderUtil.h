@@ -3,7 +3,7 @@
 #include "LogUtil.h"
 #include <GLES3/gl3.h>
 
-static GLint CreateGLShader(char *source, GLenum type) {
+static GLint createGlShader(char *source, GLenum type) {
     GLint glShader = glCreateShader(type);
     if (glShader == 0) {
         return 0;
@@ -25,7 +25,7 @@ static GLint CreateGLShader(char *source, GLenum type) {
     return glShader;
 }
 
-static GLint CreateGLProgram(GLint vertexShader, GLint fragmentShader){
+static GLint createGlProgram(GLint vertexShader, GLint fragmentShader){
     GLint program{0};
     if (!vertexShader || !fragmentShader) {
         return program;

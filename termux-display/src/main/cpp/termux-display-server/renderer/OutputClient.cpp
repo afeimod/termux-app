@@ -4,7 +4,7 @@
 #include <linux/un.h>
 #include "OutputClient.h"
 
-void OutputClient::Init(int socket) {
+void OutputClient::init(int socket) {
     dataSocket = socket;
     //设置成非阻塞模式；
     //获取文件的flags值。
@@ -15,19 +15,19 @@ void OutputClient::Init(int socket) {
     fcntl(dataSocket,F_SETFL,flags&~O_NONBLOCK);*/
 }
 
-void OutputClient::Reset() {
+void OutputClient::reset() {
     close(dataSocket);
     dataSocket = -1;
 }
 
-void OutputClient::Destroy() {
-    Reset();
+void OutputClient::destroy() {
+    reset();
 }
 
-void OutputClient::SendOutputEvent(server_termux_event ev) {
+void OutputClient::sendOutputEvent(server_termux_event ev) {
     send(dataSocket, &ev, sizeof(ev), MSG_DONTWAIT);
 }
 
 OutputClient::~OutputClient() {
-    Reset();
+    reset();
 }

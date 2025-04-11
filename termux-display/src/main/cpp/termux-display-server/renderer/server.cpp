@@ -59,7 +59,7 @@ void setSurface(jobject sf) {
 
 void *ServerSetup(void *object);
 
-void DisplayServerInit() {
+void displayServerInit() {
     if (socketFd < 0) {
         LOG_D("    SERVER_APP_CMD_INIT");
         pthread_t serverThread;
@@ -118,7 +118,7 @@ void *ServerSetup(void *object) {
             continue;
         }
         pthread_t t;
-        pthread_create(&t, nullptr, reinterpret_cast<void *(*)(void *)>(ServerStart), object);
+        pthread_create(&t, nullptr, reinterpret_cast<void *(*)(void *)>(serverStart), object);
         LOG_I("accept dataSocket: %d", dataSocket);
 
         if(outputSocket>0){
@@ -130,7 +130,7 @@ void *ServerSetup(void *object) {
             LOG_E("accept: %s", strerror(errno));
         }
         outputClient = new OutputClient;
-        outputClient->Init(outputSocket);
+        outputClient->init(outputSocket);
 
         struct epoll_event outputEvent;
         outputEvent.events = EPOLLIN;
@@ -147,7 +147,7 @@ void *ServerSetup(void *object) {
     return nullptr;
 }
 
-void ServerStart(void *object) {
+void serverStart(void *object) {
     LOG_D("----------------------------------------------------------------");
     LOG_D("    Server.Start");
     int ret = AHardwareBuffer_recvHandleFromUnixSocket(dataSocket, &hwBuffer);
@@ -164,9 +164,9 @@ void ServerStart(void *object) {
         LOG_D("    datasocket prepared");
         vm->AttachCurrentThread(&env, nullptr);
         notifyWindowChanged(2);
-        serverRenderer = SocketIPCServer::GetInstance();
+        serverRenderer = SocketIPCServer::getInstance();
         serverRenderer->m_NativeAssetManager = nativeasset;
-        serverRenderer->Init(hwBuffer, env, surface);
+        serverRenderer->init(hwBuffer, env, surface);
         isRunning = true;
         LOG_D("    datasocket connected");
 
@@ -227,14 +227,14 @@ void ServerStart(void *object) {
                     // Add your code to handle timer expiration asynchronously
                     if (isRunning && serverRenderer) {
 //                        if (cnt<2){
-//                            serverRenderer->Draw();
+//                            serverRenderer->draw();
 //                            cnt++;
 //                        }
 
                         server_termux_event e = {.type=EVENT_FRAME_COMPLETE,};
-                        outputClient->SendOutputEvent(e);
-//                        serverRenderer->Draw();
-//                        LOG_I("serverRenderer->Draw();");
+                        outputClient->sendOutputEvent(e);
+//                        serverRenderer->draw();
+//                        LOG_I("serverRenderer->draw();");
                     }
 
                 } else if (events[i].data.fd == outputSocket) {
@@ -267,7 +267,7 @@ void ServerStart(void *object) {
                     }else if(ev.type == EVENT_DRAW_FRAME){
                         if (isRunning && serverRenderer) {
                             LOG_I("EVENT_DRAW_FRAME");
-                            serverRenderer->Draw();
+                            serverRenderer->draw();
                         }
                     }
                 }
@@ -276,9 +276,9 @@ void ServerStart(void *object) {
     }
 }
 
-void SendOutputEvent(server_termux_event ev) {
+void sendOutputEvent(server_termux_event ev) {
     if (outputClient) {
-        outputClient->SendOutputEvent(ev);
+        outputClient->sendOutputEvent(ev);
     }
 }
 
@@ -289,7 +289,7 @@ Java_com_termux_display_Display_onFrameComplete(JNIEnv *env, jclass clazz, jlong
 //    if (isRunning && serverRenderer) {
 //        server_termux_event e = {.type=EVENT_FRAME_COMPLETE,};
 //        e.frame={.timestamp=static_cast<uint64_t>(frame_time_nanos)};
-//        outputClient->SendOutputEvent(e);
+//        outputClient->sendOutputEvent(e);
 //        LOG_I("onFrameComplete");
 //    }
 

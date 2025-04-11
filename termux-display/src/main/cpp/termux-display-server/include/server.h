@@ -14,8 +14,8 @@ void setNativeWindow(JNIEnv *env);
 
 void setSurface(jobject sf);
 
-void DisplayServerInit();
+void displayServerInit();
 
-void ServerStart(void *);
+void serverStart(void *);
 
-void SendOutputEvent(server_termux_event);
+void sendOutputEvent(server_termux_event);

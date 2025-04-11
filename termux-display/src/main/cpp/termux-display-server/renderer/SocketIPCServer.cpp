@@ -57,11 +57,11 @@ static int cnt;
 
 SocketIPCServer SocketIPCServer::s_Renderer{};
 
-SocketIPCServer *SocketIPCServer::GetInstance() {
+SocketIPCServer *SocketIPCServer::getInstance() {
     return &s_Renderer;
 }
 
-void SocketIPCServer::Init(AHardwareBuffer *hwBuffer, JNIEnv *e, jobject sf) {
+void SocketIPCServer::init(AHardwareBuffer *hwBuffer, JNIEnv *e, jobject sf) {
 //    DEBUG_LOG();
     env = e;
     surface = sf;
@@ -71,13 +71,13 @@ void SocketIPCServer::Init(AHardwareBuffer *hwBuffer, JNIEnv *e, jobject sf) {
     Surface_release = env->GetMethodID(Surface, "release", "()V");
     Surface_destroy = env->GetMethodID(Surface, "destroy", "()V");
 
-//    if (InitEGLEnv() != 0) return;
+//    if (initEglEnv() != 0) return;
     if(cnt<1){
-        InitEGLEnv();
-        CreateProgram();
+        initEglEnv();
+        createProgram();
     }
-//    InitEGLEnv();
-//    CreateProgram();
+//    initEglEnv();
+//    createProgram();
 
     glGenTextures(1, &m_InputTexture);
     if (hwBuffer && m_NativeBufferImage == nullptr) {
@@ -100,18 +100,18 @@ void SocketIPCServer::Init(AHardwareBuffer *hwBuffer, JNIEnv *e, jobject sf) {
     }
 }
 
-void SocketIPCServer::Destroy() {
+void SocketIPCServer::destroy() {
     DEBUG_LOG();
     glDeleteTextures(1, &m_InputTexture);
     eglDestroyImageKHR(m_EglDisplay, m_NativeBufferImage);
     glDeleteShader(m_VertexShader);
     glDeleteShader(m_FragShader);
     glDeleteProgram(m_Program);
-    DestroyEGLEnv();
+    destroyEglEnv();
     LOG_I("Destroy success.");
 }
 
-void SocketIPCServer::DestroyEGLEnv() {
+void SocketIPCServer::destroyEglEnv() {
     if (m_EglDisplay != EGL_NO_DISPLAY) {
         eglMakeCurrent(m_EglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
         eglDestroyContext(m_EglDisplay, m_EglContext);
@@ -125,7 +125,7 @@ void SocketIPCServer::DestroyEGLEnv() {
     m_NativeBufferImage = nullptr;
 }
 
-void SocketIPCServer::Draw() {
+void SocketIPCServer::draw() {
 //    BEGIN_TIME(__FUNCTION__);
     glUseProgram(m_Program);
     {
@@ -181,7 +181,7 @@ void SocketIPCServer::Draw() {
 //    END_TIME(__FUNCTION__)
 }
 
-int SocketIPCServer::InitEGLEnv() {
+int SocketIPCServer::initEglEnv() {
     const EGLint confAttr[] = {
             EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
             EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
@@ -226,7 +226,7 @@ int SocketIPCServer::InitEGLEnv() {
             break;
         }
 
-        RenderSetWindow(env, surface);
+        renderSetWindow(env, surface);
 
         m_EglContext = eglCreateContext(m_EglDisplay, m_EglConfig, EGL_NO_CONTEXT, ctxAttr);
         if (m_EglContext == EGL_NO_CONTEXT) {
@@ -252,7 +252,7 @@ int SocketIPCServer::InitEGLEnv() {
     return resultCode;
 }
 
-void SocketIPCServer::RenderSetWindow(JNIEnv *env, jobject new_surface) {
+void SocketIPCServer::renderSetWindow(JNIEnv *env, jobject new_surface) {
     if (cnt > 0) {
         LOG_I("cnt:%d", cnt);
         return;
@@ -267,7 +267,7 @@ void SocketIPCServer::RenderSetWindow(JNIEnv *env, jobject new_surface) {
     window = new_surface ? ANativeWindow_fromSurface(env, new_surface) : NULL;
     int width = window ? ANativeWindow_getWidth(window) : 0;
     int height = window ? ANativeWindow_getHeight(window) : 0;
-    LOG_I("Server RenderSetWindow %p %d %d", window, width, height);
+    LOG_I("Server renderSetWindow %p %d %d", window, width, height);
     if (window && win == window)
         return;
 
@@ -320,24 +320,24 @@ void SocketIPCServer::RenderSetWindow(JNIEnv *env, jobject new_surface) {
     }
 }
 
-void SocketIPCServer::CreateProgram() {
+void SocketIPCServer::createProgram() {
     std::vector<char> vsSource, fsSource;
-    if (ReadShader("shaders/server.vert", vsSource) < 0) {
+    if (readShader("shaders/server.vert", vsSource) < 0) {
         LOG_E("read shader error.");
         return;
     }
-    if (ReadShader("shaders/server.frag", fsSource) < 0) {
+    if (readShader("shaders/server.frag", fsSource) < 0) {
         LOG_E("read shader error.");
         return;
     }
-    m_VertexShader = CreateGLShader(std::string(vsSource.data(), vsSource.size()).data(),
+    m_VertexShader = createGlShader(std::string(vsSource.data(), vsSource.size()).data(),
                                     GL_VERTEX_SHADER);
-    m_FragShader = CreateGLShader(std::string(fsSource.data(), fsSource.size()).data(),
+    m_FragShader = createGlShader(std::string(fsSource.data(), fsSource.size()).data(),
                                   GL_FRAGMENT_SHADER);
-    m_Program = CreateGLProgram(m_VertexShader, m_FragShader);
+    m_Program = createGlProgram(m_VertexShader, m_FragShader);
 }
 
-int SocketIPCServer::ReadShader(const char *fileName, std::vector<char> &source) const {
+int SocketIPCServer::readShader(const char *fileName, std::vector<char> &source) const {
     AAsset *file = AAssetManager_open(m_NativeAssetManager, fileName, AASSET_MODE_BUFFER);
     if (!file) {
         LOG_E("Can not open file: %s", fileName);
@@ -350,7 +350,7 @@ int SocketIPCServer::ReadShader(const char *fileName, std::vector<char> &source)
     return rt;
 }
 
-uint8_t *SocketIPCServer::ReaderImage(const char *fileName, size_t *outFileLength) {
+uint8_t *SocketIPCServer::readerImage(const char *fileName, size_t *outFileLength) {
     AAsset *file = AAssetManager_open(m_NativeAssetManager, fileName, AASSET_MODE_BUFFER);
     if (!file) {
         LOG_E("Can not open file: %s", fileName);

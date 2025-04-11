@@ -4,10 +4,10 @@
 #include "OutputEvent.h"
 class   OutputClient{
 public:
-    void Init(int socket);
-    void Reset();
-    void Destroy();
-    void SendOutputEvent(server_termux_event ev);
+    void init(int socket);
+    void reset();
+    void destroy();
+    void sendOutputEvent(server_termux_event ev);
 private:
     int dataSocket;
     ~OutputClient();

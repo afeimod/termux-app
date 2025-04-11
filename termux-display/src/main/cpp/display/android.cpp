@@ -8,7 +8,7 @@ void inputCallback(termuxdc_event ev) {
 //    LOG_I("%d", ev.type);
 }
 void initClient() {
-    display_client_init(800, 600, 4);
+    display_client_init(800, 600);
     event_socket_init(inputCallback);
     pthread_t t;
     pthread_create(&t, NULL, reinterpret_cast<void *(*)(void *)>(display_client_start), nullptr);
@@ -19,7 +19,7 @@ JNIEXPORT void JNICALL
 Java_com_termux_display_Display_initDisplayWindow(JNIEnv *env, jclass clazz,
                                                   jstring name) {
     setNativeWindow(env);
-    DisplayServerInit();
+    displayServerInit();
 }
 extern "C"
 JNIEXPORT void JNICALL

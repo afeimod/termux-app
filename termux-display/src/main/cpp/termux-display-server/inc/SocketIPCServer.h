@@ -20,29 +20,29 @@
 
 class SocketIPCServer {
 public:
-    static SocketIPCServer *GetInstance();
+    static SocketIPCServer *getInstance();
 
-    void Init(AHardwareBuffer *hwBuffer, JNIEnv *e, jobject sf);
+    void init(AHardwareBuffer *hwBuffer, JNIEnv *e, jobject sf);
 
-    void Destroy();
+    void destroy();
 
-    void Draw();
+    void draw();
 
     AAssetManager *m_NativeAssetManager;
 private:
     SocketIPCServer() = default;
 
-    uint8_t *ReaderImage(const char *fileName, size_t *outFileLength);
+    uint8_t *readerImage(const char *fileName, size_t *outFileLength);
 
-    void RenderSetWindow(JNIEnv *env, jobject new_surface);
+    void renderSetWindow(JNIEnv *env, jobject new_surface);
 
-    int InitEGLEnv();
+    int initEglEnv();
 
-    void DestroyEGLEnv();
+    void destroyEglEnv();
 
-    void CreateProgram();
+    void createProgram();
 
-    int ReadShader(const char *fileName, std::vector<char> &source) const;
+    int readShader(const char *fileName, std::vector<char> &source) const;
 
     static SocketIPCServer s_Renderer;
 
