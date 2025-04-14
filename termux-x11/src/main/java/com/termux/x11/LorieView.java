@@ -439,11 +439,6 @@ public class LorieView extends SurfaceView implements InputStub {
 
     public native void sendUnicodeEvent(int code);
 
-    @Override
-    public void sendMouseEventToRenderServer(float x, float y, int whichButton, boolean buttonDown, boolean relative) {
-        Display.sendMouseEvent(x, y, whichButton, buttonDown, relative);
-    }
-
     static {
         System.loadLibrary("Xlorie");
     }
