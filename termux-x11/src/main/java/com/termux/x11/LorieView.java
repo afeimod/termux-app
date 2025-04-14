@@ -24,7 +24,7 @@ import android.view.SurfaceView;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 
-import com.termux.display.Display;
+import com.termux.display.Render;
 import com.termux.x11.controller.core.CursorLocker;
 import com.termux.x11.controller.winhandler.WinHandler;
 import com.termux.x11.controller.xserver.InputDeviceManager;
@@ -44,7 +44,7 @@ public class LorieView extends SurfaceView implements InputStub {
         BUILTIN_X_SEVER, BUILTIN_RENDER_SEVER
     }
 
-    public Display displayAdapter;
+    public Render renderAdapter;
     public RenderMode renderMode = RenderMode.BUILTIN_RENDER_SEVER;
     public final Keyboard keyboard = Keyboard.createKeyboard(this);
     public final Pointer pointer = new Pointer(this);
@@ -91,7 +91,7 @@ public class LorieView extends SurfaceView implements InputStub {
             int height = getMeasuredHeight();
             Log.d("SurfaceChangedListener", "Surface was update: " + width + "x" + height);
             if (renderMode == RenderMode.BUILTIN_RENDER_SEVER) {
-                Display.sendWindowChange(mHolder.getSurface());
+                Render.sendWindowChange(mHolder.getSurface());
             }
         }
     }
@@ -103,9 +103,9 @@ public class LorieView extends SurfaceView implements InputStub {
             mHolder = holder;
             holder.setFormat(PixelFormat.BGRA_8888);
             if (renderMode == RenderMode.BUILTIN_RENDER_SEVER) {
-                Display.setServerNativeAssetManager(getContext().getAssets());
-                Display.initDisplayWindow("screen");
-                LorieView.this.displayAdapter.initJNIEnv();
+                Render.setServerNativeAssetManager(getContext().getAssets());
+                Render.initDisplayWindow("screen");
+                LorieView.this.renderAdapter.initJNIEnv();
             }
         }
 
@@ -162,12 +162,12 @@ public class LorieView extends SurfaceView implements InputStub {
         screenInfo = new ScreenInfo(this);
         cursorLocker = new CursorLocker(this);
         if (renderMode == RenderMode.BUILTIN_RENDER_SEVER) {
-            displayAdapter = new Display();
+            renderAdapter = new Render();
             mFrameCallback = new Choreographer.FrameCallback() {
                 @Override
                 public void doFrame(long frameTimeNanos) {
-                    if (displayAdapter != null) {
-                        Display.onFrameComplete(frameTimeNanos);
+                    if (renderAdapter != null) {
+                        Render.onFrameComplete(frameTimeNanos);
                         Choreographer.getInstance().postFrameCallback(this);
                     }
                 }

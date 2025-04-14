@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-package com.termux.display;
+package com.termux.display.input;
 
 import android.content.Context;
 import android.graphics.PointF;
@@ -15,7 +15,7 @@ import android.view.ViewConfiguration;
  * a particular strategy.  The implementing class is responsible for sending
  * remote input events and defining implementation specific behavior.
  */
-public interface InputStrategyInterface {
+public interface RenderInputStrategyInterface {
     /**
      * Called when a user tap has been detected.
      *
@@ -47,7 +47,7 @@ public interface InputStrategyInterface {
      */
     void onScroll(float distanceX, float distanceY);
 
-    class NullInputStrategy implements InputStrategyInterface {
+    class NullRenderInputStrategy implements RenderInputStrategyInterface {
         @Override public void onTap(int button) {}
         @Override public boolean onPressAndHold(int button) { return false; }
         @Override public void onScroll(float distanceX, float distanceY) {}
@@ -59,12 +59,12 @@ public interface InputStrategyInterface {
      * events for the remote host.  The net result is that the local input method feels like a touch
      * interface but the remote host will be given mouse events to inject.
      */
-    class SimulatedTouchInputStrategy implements InputStrategyInterface {
+    class SimulatedTouchRenderInputStrategy implements RenderInputStrategyInterface {
         /** Used to adjust the size of the region used for double tap detection. */
         private static final float DOUBLE_TAP_SLOP_SCALE_FACTOR = 0.25f;
 
         private final RenderData mRenderData;
-        private final InputEventSender mInjector;
+        private final RenderInputEventSender mInjector;
 
         /**
          * Stores the time of the most recent left button single tap processed.
@@ -89,10 +89,10 @@ public interface InputStrategyInterface {
         private final long mDoubleTapDurationInMs;
 
         /** Mouse-button currently held down, or BUTTON_UNDEFINED otherwise. */
-        private int mHeldButton = InputStub.BUTTON_UNDEFINED;
+        private int mHeldButton = RenderInputStub.BUTTON_UNDEFINED;
 
-        public SimulatedTouchInputStrategy(
-                RenderData renderData, InputEventSender injector, Context context) {
+        public SimulatedTouchRenderInputStrategy(
+            RenderData renderData, RenderInputEventSender injector, Context context) {
             if (injector == null)
                 throw new NullPointerException();
             mRenderData = renderData;
@@ -126,7 +126,7 @@ public interface InputStrategyInterface {
         @Override
         public void onTap(int button) {
             PointF currentTapPoint = mRenderData.getCursorPosition();
-            if (button == InputStub.BUTTON_LEFT) {
+            if (button == RenderInputStub.BUTTON_LEFT) {
                 // Left clicks are handled a little differently than the events for other buttons.
                 // This is needed because translating touch events to mouse events has a problem with
                 // location consistency for double clicks.  If you take the center location of each tap
@@ -165,9 +165,9 @@ public interface InputStrategyInterface {
 
         @Override
         public void onMotionEvent(MotionEvent event) {
-            if (event.getActionMasked() == MotionEvent.ACTION_UP && mHeldButton != InputStub.BUTTON_UNDEFINED) {
+            if (event.getActionMasked() == MotionEvent.ACTION_UP && mHeldButton != RenderInputStub.BUTTON_UNDEFINED) {
                 mInjector.sendMouseUp(mHeldButton, false);
-                mHeldButton = InputStub.BUTTON_UNDEFINED;
+                mHeldButton = RenderInputStub.BUTTON_UNDEFINED;
             }
         }
 
@@ -193,13 +193,13 @@ public interface InputStrategyInterface {
      * local input event data.  This class is also responsible for forwarding input event data
      * to the remote host for injection there.
      */
-    class TrackpadInputStrategy implements InputStrategyInterface {
-        private final InputEventSender mInjector;
+    class TrackpadRenderInputStrategy implements RenderInputStrategyInterface {
+        private final RenderInputEventSender mInjector;
 
         /** Mouse-button currently held down, or BUTTON_UNDEFINED otherwise. */
-        private int mHeldButton = InputStub.BUTTON_UNDEFINED;
+        private int mHeldButton = RenderInputStub.BUTTON_UNDEFINED;
 
-        public TrackpadInputStrategy(InputEventSender injector) {
+        public TrackpadRenderInputStrategy(RenderInputEventSender injector) {
             if ((mInjector = injector) == null)
                 throw new NullPointerException();
         }
@@ -223,9 +223,9 @@ public interface InputStrategyInterface {
 
         @Override
         public void onMotionEvent(MotionEvent event) {
-            if (event.getActionMasked() == MotionEvent.ACTION_UP && mHeldButton != InputStub.BUTTON_UNDEFINED) {
+            if (event.getActionMasked() == MotionEvent.ACTION_UP && mHeldButton != RenderInputStub.BUTTON_UNDEFINED) {
                 mInjector.sendMouseUp(mHeldButton, true);
-                mHeldButton = InputStub.BUTTON_UNDEFINED;
+                mHeldButton = RenderInputStub.BUTTON_UNDEFINED;
             }
         }
     }

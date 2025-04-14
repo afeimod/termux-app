@@ -2,16 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-package com.termux.display;
+package com.termux.display.input;
 
 /**
  * A set of functions to send client users' activities to remote host machine. This interface
  * represents low level functions without relationships with Android system. Consumers can use
- * {@link InputEventSender} to avoid conversions between Android classes and JNI types. The
+ * {@link RenderInputEventSender} to avoid conversions between Android classes and JNI types. The
  * implementations of this interface are not required to be thread-safe. All these functions should
  * be called from Android UI thread.
  */
-public interface InputStub {
+public interface RenderInputStub {
     // These constants must match those in the generated struct protocol::MouseEvent_MouseButton.
     int BUTTON_UNDEFINED = 0;
     int BUTTON_LEFT = 1;

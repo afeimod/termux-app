@@ -3,7 +3,9 @@ package com.termux.display;
 import android.content.res.AssetManager;
 import android.view.Surface;
 
-public class Display implements InputStub{
+import com.termux.display.input.RenderInputStub;
+
+public class Render implements RenderInputStub {
     public interface DisplayCallback {
         void onFinishInitialize();
 
@@ -36,6 +38,7 @@ public class Display implements InputStub{
             }
         }
     }
+
     @Override
     public void sendMouseWheelEvent(float deltaX, float deltaY) {
         sendMouseEvent(deltaX, deltaY, BUTTON_SCROLL, false, true);

@@ -69,6 +69,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.core.math.MathUtils;
 import androidx.viewpager.widget.ViewPager;
 
+import com.termux.display.Render;
 import com.termux.x11.controller.container.Container;
 import com.termux.x11.controller.container.Shortcut;
 import com.termux.x11.controller.inputcontrols.InputControlsManager;
@@ -305,7 +306,7 @@ public class MainActivity extends LoriePreferences implements View.OnApplyWindow
         Executors.newSingleThreadExecutor().execute(() -> {
             winHandler.start();
         });
-        getLorieView().displayAdapter.setDisplayCallback(new com.termux.display.Display.DisplayCallback() {
+        getLorieView().renderAdapter.setDisplayCallback(new Render.DisplayCallback() {
             @Override
             public void onFinishInitialize() {
                 MainActivity.this.clientConnectedStateChanged(true);

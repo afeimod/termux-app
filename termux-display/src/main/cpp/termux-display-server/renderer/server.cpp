@@ -28,7 +28,7 @@ static jobject displayObject;
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_termux_display_Display_initJNIEnv(JNIEnv *env, jobject thiz) {
+Java_com_termux_display_Render_initJNIEnv(JNIEnv *env, jobject thiz) {
     displayObject = env->NewGlobalRef(thiz);;
 }
 
@@ -41,8 +41,8 @@ void notifyWindowChanged(int state) {
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_termux_display_Display_setServerNativeAssetManager(JNIEnv *env, jobject thiz,
-                                                            jobject asset_manager) {
+Java_com_termux_display_Render_setServerNativeAssetManager(JNIEnv *env, jobject thiz,
+                                                           jobject asset_manager) {
     if (!nativeasset) { nativeasset = AAssetManager_fromJava(env, asset_manager); }
 }
 
@@ -285,7 +285,7 @@ void sendOutputEvent(server_termux_event ev) {
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_termux_display_Display_onFrameComplete(JNIEnv *env, jclass clazz, jlong frame_time_nanos) {
+Java_com_termux_display_Render_onFrameComplete(JNIEnv *env, jclass clazz, jlong frame_time_nanos) {
 //    if (isRunning && serverRenderer) {
 //        server_termux_event e = {.type=EVENT_FRAME_COMPLETE,};
 //        e.frame={.timestamp=static_cast<uint64_t>(frame_time_nanos)};

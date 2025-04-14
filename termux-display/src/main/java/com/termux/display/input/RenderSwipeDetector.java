@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-package com.termux.display;
+package com.termux.display.input;
 
 import android.content.Context;
 import android.view.MotionEvent;
@@ -14,7 +14,7 @@ import android.view.ViewConfiguration;
  * determine the intent.
  */
 @SuppressWarnings("ConstantConditions")
-public class SwipeDetector {
+public class RenderSwipeDetector {
     private boolean mInSwipe = false;
 
     /** Initial coordinates of the two pointers in the current gesture. */
@@ -40,7 +40,7 @@ public class SwipeDetector {
     }
 
     /** Construct a new detector, using the context to determine movement thresholds. */
-    public SwipeDetector(Context context) {
+    public RenderSwipeDetector(Context context) {
         ViewConfiguration config = ViewConfiguration.get(context);
         int touchSlop = config.getScaledTouchSlop();
         mTouchSlopSquare = touchSlop * touchSlop;

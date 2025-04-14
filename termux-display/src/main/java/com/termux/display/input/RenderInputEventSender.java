@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-package com.termux.display;
+package com.termux.display.input;
 
 import static android.view.KeyEvent.ACTION_MULTIPLE;
 import static android.view.KeyEvent.KEYCODE_2;
@@ -25,7 +25,7 @@ import static android.view.MotionEvent.ACTION_MOVE;
 import static android.view.MotionEvent.ACTION_POINTER_DOWN;
 import static android.view.MotionEvent.ACTION_POINTER_UP;
 import static androidx.core.math.MathUtils.clamp;
-import static com.termux.x11.input.InputStub.*;
+import static com.termux.display.input.RenderInputStub.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.graphics.PointF;
@@ -38,14 +38,14 @@ import java.util.TreeSet;
 
 /**
  * A set of functions to send users' activities, which are represented by Android classes, to
- * remote host machine. This class uses a {@link InputStub} to do the real injections.
+ * remote host machine. This class uses a {@link RenderInputStub} to do the real injections.
  */
-public final class InputEventSender {
+public final class RenderInputEventSender {
     private static final int XI_TouchBegin = 18;
     private static final int XI_TouchUpdate = 19;
     private static final int XI_TouchEnd = 20;
 
-    private final InputStub mInjector;
+    private final RenderInputStub mInjector;
 
     public boolean tapToMove = false;
     public boolean preferScancodes = false;
@@ -92,7 +92,7 @@ public final class InputEventSender {
         return false;
     }
 
-    public InputEventSender(InputStub injector) {
+    public RenderInputEventSender(RenderInputStub injector) {
         if (injector == null)
             throw new NullPointerException();
         mInjector = injector;

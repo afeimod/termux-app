@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-package com.termux.display;
+package com.termux.display.input;
 
 import android.content.Context;
 import android.graphics.PointF;
@@ -18,7 +18,7 @@ import java.lang.ref.WeakReference;
  * This class detects multi-finger tap and long-press events. This is provided since the stock
  * Android gesture-detectors only detect taps/long-presses made with one finger.
  */
-public class TapGestureDetector {
+public class RenderTapGestureDetector {
     private int longPressedDelay =1;
 
     public void setLongPressedDelay(int longPressedDelay) {
@@ -78,15 +78,15 @@ public class TapGestureDetector {
     // lint HandlerLeak warning.
     @SuppressWarnings("deprecation")
     private static class EventHandler extends Handler {
-        private final WeakReference<TapGestureDetector> mDetector;
+        private final WeakReference<RenderTapGestureDetector> mDetector;
 
-        public EventHandler(TapGestureDetector detector) {
+        public EventHandler(RenderTapGestureDetector detector) {
             mDetector = new WeakReference<>(detector);
         }
 
         @Override
         public void handleMessage(Message message) {
-            TapGestureDetector detector = mDetector.get();
+            RenderTapGestureDetector detector = mDetector.get();
             if (detector != null) {
                 detector.mTapCancelled = true;
                 detector.mListener.onLongPress(detector.mPointerCount, detector.mInitialPoint.x, detector.mInitialPoint.y);
@@ -95,7 +95,7 @@ public class TapGestureDetector {
         }
     }
 
-    public TapGestureDetector(Context context, OnTapListener listener) {
+    public RenderTapGestureDetector(Context context, OnTapListener listener) {
         mListener = listener;
         mHandler = new EventHandler(this);
         ViewConfiguration config = ViewConfiguration.get(context);

@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-package com.termux.display;
+package com.termux.display.input;
 
-import static com.termux.x11.input.InputStub.BUTTON_LEFT;
+import static com.termux.display.input.RenderInputStub.BUTTON_LEFT;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -28,7 +28,7 @@ import java.lang.annotation.RetentionPolicy;
  * the local canvas are handled in this class and any input which should be sent to the remote host
  * are passed to the InputStrategyInterface implementation set by the DesktopView.
  */
-public class TouchInputHandler {
+public class RenderTouchInputHandler {
     private static final float EPSILON = 0.001f;
 
     public static int STYLUS_INPUT_HELPER_MODE = 1; //1 = Left Click, 2 Middle Click, 3 Right Click
@@ -49,19 +49,19 @@ public class TouchInputHandler {
     private final RenderData mRenderData;
     private final RenderStub mRenderStub;
     private final GestureDetector mScroller;
-    private final TapGestureDetector mTapDetector;
+    private final RenderTapGestureDetector mTapDetector;
     private final StylusListener mStylusListener = new StylusListener();
     private final HardwareMouseListener mHMListener = new HardwareMouseListener();
     private final DexListener mDexListener;
-    private final TouchInputHandler mTouchpadHandler;
+    private final RenderTouchInputHandler mTouchpadHandler;
 
     /**
      * Used to disambiguate a 2-finger gesture as a swipe or a pinch.
      */
-    private final SwipeDetector mSwipePinchDetector;
+    private final RenderSwipeDetector mSwipePinchDetector;
 
-    private InputStrategyInterface mInputStrategy;
-    private final InputEventSender mInjector;
+    private RenderInputStrategyInterface mInputStrategy;
+    private final RenderInputEventSender mInjector;
     private final Context mContext;
 
     /**
@@ -94,7 +94,7 @@ public class TouchInputHandler {
      */
     private boolean mIsDragging;
 
-    private TouchInputHandler(Context ctx, RenderData renderData, RenderStub renderStub, final InputEventSender injector, boolean isTouchpad) {
+    private RenderTouchInputHandler(Context ctx, RenderData renderData, RenderStub renderStub, final RenderInputEventSender injector, boolean isTouchpad) {
         if (renderStub == null || injector == null)
             throw new NullPointerException();
 
@@ -112,8 +112,8 @@ public class TouchInputHandler {
         // down too long.
         mScroller.setIsLongpressEnabled(false);
 
-        mTapDetector = new TapGestureDetector(/*desktop*/ ctx, listener);
-        mSwipePinchDetector = new SwipeDetector(/*desktop*/ ctx);
+        mTapDetector = new RenderTapGestureDetector(/*desktop*/ ctx, listener);
+        mSwipePinchDetector = new RenderSwipeDetector(/*desktop*/ ctx);
 
         // The threshold needs to be bigger than the ScaledTouchSlop used by the gesture-detectors,
         // so that a gesture cannot be both a tap and a swipe. It also needs to be small enough so
@@ -125,10 +125,10 @@ public class TouchInputHandler {
 
         setInputMode(InputMode.TRACKPAD);
         mDexListener = new DexListener(ctx);
-        mTouchpadHandler = isTouchpad ? null : new TouchInputHandler(ctx, mRenderData, renderStub, injector, true);
+        mTouchpadHandler = isTouchpad ? null : new RenderTouchInputHandler(ctx, mRenderData, renderStub, injector, true);
     }
 
-    public TouchInputHandler(Context ctx, RenderStub renderStub, final InputEventSender injector) {
+    public RenderTouchInputHandler(Context ctx, RenderStub renderStub, final RenderInputEventSender injector) {
         this(ctx, null, renderStub, injector, false);
     }
 
@@ -157,7 +157,7 @@ public class TouchInputHandler {
 
             int offsetX = viewLocation[0] - view0Location[0];
             int offsetY = viewLocation[1] - view0Location[1];
-            if (mInputStrategy instanceof InputStrategyInterface.NullInputStrategy) {
+            if (mInputStrategy instanceof RenderInputStrategyInterface.NullRenderInputStrategy) {
 
             }
             mRenderData.offsetX = offsetX;
@@ -195,7 +195,7 @@ public class TouchInputHandler {
             // Give the underlying input strategy a chance to observe the current motion event before
             // passing it to the gesture detectors.  This allows the input strategy to react to the
             // event or save the payload for use in recreating the gesture remotely.
-            if (mInputStrategy instanceof InputStrategyInterface.NullInputStrategy)
+            if (mInputStrategy instanceof RenderInputStrategyInterface.NullRenderInputStrategy)
                 mInjector.sendTouchEvent(event, mRenderData);
             else
                 mInputStrategy.onMotionEvent(event);
@@ -265,11 +265,11 @@ public class TouchInputHandler {
 
     public void setInputMode(@InputMode int inputMode) {
         if (inputMode == InputMode.TOUCH)
-            mInputStrategy = new InputStrategyInterface.NullInputStrategy();
+            mInputStrategy = new RenderInputStrategyInterface.NullRenderInputStrategy();
         else if (inputMode == InputMode.SIMULATED_TOUCH)
-            mInputStrategy = new InputStrategyInterface.SimulatedTouchInputStrategy(mRenderData, mInjector, mContext);
+            mInputStrategy = new RenderInputStrategyInterface.SimulatedTouchRenderInputStrategy(mRenderData, mInjector, mContext);
         else
-            mInputStrategy = new InputStrategyInterface.TrackpadInputStrategy(mInjector);
+            mInputStrategy = new RenderInputStrategyInterface.TrackpadRenderInputStrategy(mInjector);
     }
 
     public void setTapToMove(boolean enabled) {
@@ -289,9 +289,9 @@ public class TouchInputHandler {
     }
 
     private void moveCursorByOffset(float deltaX, float deltaY) {
-        if (mInputStrategy instanceof InputStrategyInterface.TrackpadInputStrategy)
+        if (mInputStrategy instanceof RenderInputStrategyInterface.TrackpadRenderInputStrategy)
             mInjector.sendCursorMove(-deltaX, -deltaY, true);
-        else if (mInputStrategy instanceof InputStrategyInterface.SimulatedTouchInputStrategy) {
+        else if (mInputStrategy instanceof RenderInputStrategyInterface.SimulatedTouchRenderInputStrategy) {
             PointF cursorPos = mRenderData.getCursorPosition();
             cursorPos.offset(-deltaX, -deltaY);
             cursorPos.set(MathUtils.clamp(cursorPos.x, 0, mRenderData.screenWidth), MathUtils.clamp(cursorPos.y, 0, mRenderData.screenHeight));
@@ -304,7 +304,7 @@ public class TouchInputHandler {
      * Moves the cursor to the specified position on the screen.
      */
     private void moveCursorToScreenPoint(float screenX, float screenY) {
-        if (mInputStrategy instanceof InputStrategyInterface.TrackpadInputStrategy || mInputStrategy instanceof InputStrategyInterface.SimulatedTouchInputStrategy) {
+        if (mInputStrategy instanceof RenderInputStrategyInterface.TrackpadRenderInputStrategy || mInputStrategy instanceof RenderInputStrategyInterface.SimulatedTouchRenderInputStrategy) {
             float[] imagePoint = {(screenX - mRenderData.offsetX) * mRenderData.scale.x, (screenY - mRenderData.offsetY) * mRenderData.scale.y};
             if (mRenderData.setCursorPosition(imagePoint[0], imagePoint[1]))
                 mInjector.sendCursorMove((int) imagePoint[0], imagePoint[1], false);
@@ -333,7 +333,7 @@ public class TouchInputHandler {
      * @noinspection NullableProblems
      */
     private class GestureListener extends GestureDetector.SimpleOnGestureListener
-            implements TapGestureDetector.OnTapListener {
+            implements RenderTapGestureDetector.OnTapListener {
         private final Handler mGestureListenerHandler = new Handler(msg -> {
             if (msg.what == BUTTON_LEFT)
                 mInputStrategy.onTap(BUTTON_LEFT);
@@ -356,7 +356,7 @@ public class TouchInputHandler {
             }
 
             if (pointerCount == 2 && mSwipePinchDetector.isSwiping()) {
-                if (!(mInputStrategy instanceof InputStrategyInterface.TrackpadInputStrategy)) {
+                if (!(mInputStrategy instanceof RenderInputStrategyInterface.TrackpadRenderInputStrategy)) {
                     // Ensure the cursor is located at the coordinates of the original event,
                     // otherwise the target window may not receive the scroll event correctly.
                     moveCursorToScreenPoint(e1.getX(), e1.getY());
@@ -371,14 +371,14 @@ public class TouchInputHandler {
             if (pointerCount != 1 || mSuppressCursorMovement)
                 return false;
 
-            if (mInputStrategy instanceof InputStrategyInterface.TrackpadInputStrategy) {
+            if (mInputStrategy instanceof RenderInputStrategyInterface.TrackpadRenderInputStrategy) {
                 if (mInjector.scaleTouchpad) {
                     distanceX *= mRenderData.scale.x;
                     distanceY *= mRenderData.scale.y;
                 }
                 moveCursorByOffset(distanceX, distanceY);
             }
-            if (!(mInputStrategy instanceof InputStrategyInterface.TrackpadInputStrategy) && mIsDragging) {
+            if (!(mInputStrategy instanceof RenderInputStrategyInterface.TrackpadRenderInputStrategy) && mIsDragging) {
                 // Ensure the cursor follows the user's finger when the user is dragging under
                 // direct input mode.
                 moveCursorToScreenPoint(e2.getX(), e2.getY());
@@ -400,16 +400,16 @@ public class TouchInputHandler {
         @Override
         public void onTap(int pointerCount, float x, float y) {
             int button = mouseButtonFromPointerCount(pointerCount);
-            if (button == InputStub.BUTTON_UNDEFINED)
+            if (button == RenderInputStub.BUTTON_UNDEFINED)
                 return;
 
-            if (!(mInputStrategy instanceof InputStrategyInterface.TrackpadInputStrategy)) {
+            if (!(mInputStrategy instanceof RenderInputStrategyInterface.TrackpadRenderInputStrategy)) {
                 if (screenPointLiesOutsideImageBoundary(x, y))
                     return;
                 moveCursorToScreenPoint(x, y);
             }
 
-            if (button != BUTTON_LEFT || !(mInjector.tapToMove && mInputStrategy instanceof InputStrategyInterface.TrackpadInputStrategy))
+            if (button != BUTTON_LEFT || !(mInjector.tapToMove && mInputStrategy instanceof RenderInputStrategyInterface.TrackpadRenderInputStrategy))
                 mInputStrategy.onTap(button);
             else
                 mGestureListenerHandler.sendEmptyMessageDelayed(BUTTON_LEFT, ViewConfiguration.getDoubleTapTimeout());
@@ -424,7 +424,7 @@ public class TouchInputHandler {
             if (e.getPointerCount() == 1) {
                 switch (e.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
-                        if (mInjector.tapToMove && mInputStrategy instanceof InputStrategyInterface.TrackpadInputStrategy) {
+                        if (mInjector.tapToMove && mInputStrategy instanceof RenderInputStrategyInterface.TrackpadRenderInputStrategy) {
                             mGestureListenerHandler.removeMessages(BUTTON_LEFT);
                             onLongPress(1, e.getX(), e.getY());
                         }
@@ -447,11 +447,11 @@ public class TouchInputHandler {
         @Override
         public void onLongPress(int pointerCount, float x, float y) {
             int button = mouseButtonFromPointerCount(pointerCount);
-            if (button == InputStub.BUTTON_UNDEFINED) {
+            if (button == RenderInputStub.BUTTON_UNDEFINED) {
                 return;
             }
 
-            if (!(mInputStrategy instanceof InputStrategyInterface.TrackpadInputStrategy)) {
+            if (!(mInputStrategy instanceof RenderInputStrategyInterface.TrackpadRenderInputStrategy)) {
                 if (screenPointLiesOutsideImageBoundary(x, y))
                     return;
                 moveCursorToScreenPoint(x, y);
@@ -469,11 +469,11 @@ public class TouchInputHandler {
                 case 1:
                     return BUTTON_LEFT;
                 case 2:
-                    return InputStub.BUTTON_RIGHT;
+                    return RenderInputStub.BUTTON_RIGHT;
                 case 3:
-                    return InputStub.BUTTON_MIDDLE;
+                    return RenderInputStub.BUTTON_MIDDLE;
                 default:
-                    return InputStub.BUTTON_UNDEFINED;
+                    return RenderInputStub.BUTTON_UNDEFINED;
             }
         }
 
@@ -508,8 +508,8 @@ public class TouchInputHandler {
 
         private final int[][] buttons = {
                 {MotionEvent.BUTTON_PRIMARY, BUTTON_LEFT},
-                {MotionEvent.BUTTON_TERTIARY, InputStub.BUTTON_MIDDLE},
-                {MotionEvent.BUTTON_SECONDARY, InputStub.BUTTON_RIGHT}
+                {MotionEvent.BUTTON_TERTIARY, RenderInputStub.BUTTON_MIDDLE},
+                {MotionEvent.BUTTON_SECONDARY, RenderInputStub.BUTTON_RIGHT}
         };
 
         @SuppressLint("ClickableViewAccessibility")
@@ -611,9 +611,9 @@ public class TouchInputHandler {
             if (isMouseButtonChanged(MotionEvent.BUTTON_PRIMARY))
                 mInjector.sendMouseEvent(mRenderData.getCursorPosition(), BUTTON_LEFT, mouseButtonDown(MotionEvent.BUTTON_PRIMARY), false);
             if (isMouseButtonChanged(MotionEvent.BUTTON_TERTIARY))
-                mInjector.sendMouseEvent(mRenderData.getCursorPosition(), InputStub.BUTTON_MIDDLE, mouseButtonDown(MotionEvent.BUTTON_TERTIARY), false);
+                mInjector.sendMouseEvent(mRenderData.getCursorPosition(), RenderInputStub.BUTTON_MIDDLE, mouseButtonDown(MotionEvent.BUTTON_TERTIARY), false);
             if (isMouseButtonChanged(MotionEvent.BUTTON_SECONDARY))
-                mInjector.sendMouseEvent(mRenderData.getCursorPosition(), InputStub.BUTTON_RIGHT, mouseButtonDown(MotionEvent.BUTTON_SECONDARY), false);
+                mInjector.sendMouseEvent(mRenderData.getCursorPosition(), RenderInputStub.BUTTON_RIGHT, mouseButtonDown(MotionEvent.BUTTON_SECONDARY), false);
             savedBS = currentBS;
         }
 
