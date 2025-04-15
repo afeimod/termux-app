@@ -20,6 +20,7 @@ import static android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN;
 import static android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE;
 import static android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN;
 import static com.termux.x11.CmdEntryPoint.ACTION_START;
+import static com.termux.x11.LorieView.RenderMode.BUILTIN_RENDER_SEVER;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -70,6 +71,8 @@ import androidx.core.math.MathUtils;
 import androidx.viewpager.widget.ViewPager;
 
 import com.termux.display.Render;
+import com.termux.display.input.RenderInputEventSender;
+import com.termux.display.input.RenderTouchInputHandler;
 import com.termux.x11.controller.container.Container;
 import com.termux.x11.controller.container.Shortcut;
 import com.termux.x11.controller.inputcontrols.InputControlsManager;
@@ -102,6 +105,7 @@ public class MainActivity extends LoriePreferences implements View.OnApplyWindow
     protected FrameLayout frm;
     protected View lorieContentView;
     protected TouchInputHandler mInputHandler;
+    protected RenderTouchInputHandler mRenderInputHandler;
     protected ICmdEntryInterface service = null;
     private final int mNotificationId = 7893;
     private boolean mClientConnected = false;
@@ -185,6 +189,10 @@ public class MainActivity extends LoriePreferences implements View.OnApplyWindow
         View lorieParent = (View) lorieView.getParent();
 //        Log.d("Mainactivity","frm==lorieParent:"+String.valueOf(frm==lorieParent));
 
+        if (getLorieView().renderMode== BUILTIN_RENDER_SEVER){
+            mRenderInputHandler = new RenderTouchInputHandler(this, new com.termux.display.input.RenderStub.NullStub(),
+                new RenderInputEventSender(getLorieView().renderAdapter));
+        }
         mInputHandler = new TouchInputHandler(this, new RenderStub.NullStub() {
             @Override
             public void swipeDown() {
@@ -230,6 +238,9 @@ public class MainActivity extends LoriePreferences implements View.OnApplyWindow
                     return true;
                 }
             }
+            if (getLorieView().renderMode== BUILTIN_RENDER_SEVER){
+                return mRenderInputHandler.sendKeyEvent(v, e);
+            }
             return mInputHandler.sendKeyEvent(v, e);
         };
         lorieParent.setOnTouchListener((v, event) -> true);
@@ -238,12 +249,27 @@ public class MainActivity extends LoriePreferences implements View.OnApplyWindow
 //        lorieParent.setOnGenericMotionListener((v, e) -> mInputHandler.handleTouchEvent(lorieParent, lorieView, e));
 //        lorieView.setOnCapturedPointerListener((v, e) -> mInputHandler.handleTouchEvent(lorieView, lorieView, e));
 //        lorieParent.setOnCapturedPointerListener((v, e) -> mInputHandler.handleTouchEvent(lorieView, lorieView, e));
-        lorieView.setOnHoverListener((v, e) -> mInputHandler.handleTouchEvent(lorieParent, lorieView, e));
+        lorieView.setOnHoverListener(new View.OnHoverListener() {
+            @Override
+            public boolean onHover(View v, MotionEvent event) {
+                if (getLorieView().renderMode== BUILTIN_RENDER_SEVER){
+                    return mRenderInputHandler.handleTouchEvent(lorieParent,lorieView,event);
+                }
+                return mInputHandler.handleTouchEvent(lorieParent, lorieView, event);
+            }
+        });
         lorieView.setOnKeyListener(mLorieKeyListener);
 
         lorieView.setCallback((sfc, surfaceWidth, surfaceHeight, screenWidth, screenHeight) -> {
             int framerate = (int) ((lorieView.getDisplay() != null) ? lorieView.getDisplay().getRefreshRate() : 30);
 
+            if (getLorieView().renderMode== BUILTIN_RENDER_SEVER){
+                mRenderInputHandler.handleHostSizeChanged(surfaceWidth, surfaceHeight);
+                mRenderInputHandler.handleClientSizeChanged(screenWidth, screenHeight);
+                lorieView.screenInfo.handleHostSizeChanged(surfaceWidth, surfaceHeight);
+                lorieView.screenInfo.handleClientSizeChanged(screenWidth, screenHeight);
+                return;
+            }
             mInputHandler.handleHostSizeChanged(surfaceWidth, surfaceHeight);
             mInputHandler.handleClientSizeChanged(screenWidth, screenHeight);
             lorieView.screenInfo.handleHostSizeChanged(surfaceWidth, surfaceHeight);
@@ -622,28 +648,54 @@ public class MainActivity extends LoriePreferences implements View.OnApplyWindow
             }
             case "touchMode": {
                 int mode = Integer.parseInt(p.getString("touchMode", "1"));
+                if(getLorieView().renderMode==BUILTIN_RENDER_SEVER){
+                    mRenderInputHandler.setInputMode(mode);
+                    break;
+                }
                 mInputHandler.setInputMode(mode);
                 break;
             }
             case "tapToMove": {
+                if(getLorieView().renderMode==BUILTIN_RENDER_SEVER){
+                    mRenderInputHandler.setTapToMove(p.getBoolean("tapToMove", false));
+                    break;
+                }
                 mInputHandler.setTapToMove(p.getBoolean("tapToMove", false));
                 break;
             }
             case "preferScancodes": {
+                if(getLorieView().renderMode==BUILTIN_RENDER_SEVER){
+                    mRenderInputHandler.setPreferScancodes(p.getBoolean("preferScancodes", false));
+                    break;
+                }
                 mInputHandler.setPreferScancodes(p.getBoolean("preferScancodes", false));
                 break;
             }
             case "pointerCapture": {
+                if(getLorieView().renderMode==BUILTIN_RENDER_SEVER){
+                    mRenderInputHandler.setPointerCaptureEnabled(p.getBoolean("pointerCapture", false));
+                    if (!p.getBoolean("pointerCapture", false) && lorieView.hasPointerCapture())
+                        lorieView.releasePointerCapture();
+                    break;
+                }
                 mInputHandler.setPointerCaptureEnabled(p.getBoolean("pointerCapture", false));
                 if (!p.getBoolean("pointerCapture", false) && lorieView.hasPointerCapture())
                     lorieView.releasePointerCapture();
                 break;
             }
             case "scaleTouchpad": {
+                if(getLorieView().renderMode==BUILTIN_RENDER_SEVER){
+                    mRenderInputHandler.setApplyDisplayScaleFactorToTouchpad(p.getBoolean("scaleTouchpad", true));
+                    break;
+                }
                 mInputHandler.setApplyDisplayScaleFactorToTouchpad(p.getBoolean("scaleTouchpad", true));
                 break;
             }
             case "touch_sensitivity": {
+                if(getLorieView().renderMode==BUILTIN_RENDER_SEVER){
+                    mRenderInputHandler.setLongPressedDelay(p.getInt("touch_sensitivity", 1));
+                    break;
+                }
                 mInputHandler.setLongPressedDelay(p.getInt("touch_sensitivity", 1));
                 break;
             }

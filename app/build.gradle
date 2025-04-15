@@ -47,6 +47,8 @@ android {
         implementation (project(':termux-x11')){
             exclude group: 'androidx.preference'
         }
+
+        compileOnly project(':termux-display')
     }
 
     defaultConfig {

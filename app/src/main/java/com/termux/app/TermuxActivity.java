@@ -4,6 +4,7 @@ import static android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
 import static com.termux.shared.termux.TermuxConstants.TERMUX_FILES_DIR_PATH;
 import static com.termux.shared.termux.TermuxConstants.TERMUX_HOME_DIR_PATH;
 import static com.termux.shared.termux.TermuxConstants.TERMUX_TMP_PREFIX_DIR_PATH;
+import static com.termux.x11.LorieView.RenderMode.BUILTIN_RENDER_SEVER;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -271,6 +272,14 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
             return false;
         }
 //                Log.d("sendTouchEvent",String.valueOf(inputControllerViewHandled));
+        if(getLorieView().renderMode==BUILTIN_RENDER_SEVER){
+            if (null != mRenderInputHandler) {
+                if (!inputControllerViewHandled) {
+                    mRenderInputHandler.handleTouchEvent(mMainContentView, getLorieView(), ev);
+                }
+            }
+            return true;
+        }
         if (null != mInputHandler) {
             if (!inputControllerViewHandled) {
                 mInputHandler.handleTouchEvent(mMainContentView, getLorieView(), ev);
