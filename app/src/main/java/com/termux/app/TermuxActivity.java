@@ -272,20 +272,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
             return false;
         }
 //                Log.d("sendTouchEvent",String.valueOf(inputControllerViewHandled));
-        if(getLorieView().renderMode==BUILTIN_RENDER_SEVER){
-            if (null != mRenderInputHandler) {
-                if (!inputControllerViewHandled) {
-                    mRenderInputHandler.handleTouchEvent(mMainContentView, getLorieView(), ev);
-                }
-            }
-            return true;
-        }
-        if (null != mInputHandler) {
-            if (!inputControllerViewHandled) {
-                mInputHandler.handleTouchEvent(mMainContentView, getLorieView(), ev);
-            }
-        }
-        return true;
+        return processTouchEvent(mMainContentView,ev);
     }
 
 

@@ -104,8 +104,8 @@ public class LorieView extends SurfaceView implements InputStub {
             holder.setFormat(PixelFormat.BGRA_8888);
             if (renderMode == RenderMode.BUILTIN_RENDER_SEVER) {
                 Render.setServerNativeAssetManager(getContext().getAssets());
-                Render.initDisplayWindow("screen");
-                LorieView.this.renderAdapter.initJNIEnv();
+                Render.initRenderWindow("screen");
+                LorieView.this.renderAdapter.initRenderJNIEnv();
             }
         }
 

@@ -6,7 +6,7 @@ import android.view.Surface;
 import com.termux.display.input.RenderInputStub;
 
 public class Render implements RenderInputStub {
-    public interface DisplayCallback {
+    public interface RenderCallback {
         void onFinishInitialize();
 
         void onClientExit();
@@ -14,25 +14,25 @@ public class Render implements RenderInputStub {
         void onNewClientCreate();
     }
 
-    private DisplayCallback displayCallback;
+    private RenderCallback renderCallback;
 
-    public void setDisplayCallback(DisplayCallback callback) {
-        displayCallback = callback;
+    public void setRenderCallback(RenderCallback callback) {
+        renderCallback = callback;
     }
 
     public void notifyWindowChanged(int state) {
-        if (displayCallback != null) {
+        if (renderCallback != null) {
             switch (state) {
                 case 0: {
-                    displayCallback.onFinishInitialize();
+                    renderCallback.onFinishInitialize();
                     break;
                 }
                 case 1: {
-                    displayCallback.onClientExit();
+                    renderCallback.onClientExit();
                     break;
                 }
                 case 2:{
-                    displayCallback.onNewClientCreate();
+                    renderCallback.onNewClientCreate();
                     break;
                 }
             }
@@ -43,9 +43,9 @@ public class Render implements RenderInputStub {
     public void sendMouseWheelEvent(float deltaX, float deltaY) {
         sendMouseEvent(deltaX, deltaY, BUTTON_SCROLL, false, true);
     }
-    native public void initJNIEnv();
+    native public void initRenderJNIEnv();
 
-    static native public void initDisplayWindow(String name);
+    static native public void initRenderWindow(String name);
 
     static native public void setServerNativeAssetManager(AssetManager assetManager);
 
@@ -75,6 +75,6 @@ public class Render implements RenderInputStub {
     static native public void onFrameComplete(long frameTimeNanos);
 
     static {
-        System.loadLibrary("Display");
+        System.loadLibrary("Render");
     }
 }

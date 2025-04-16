@@ -6,8 +6,8 @@
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_termux_display_Render_initDisplayWindow(JNIEnv *env, jclass clazz,
-                                                 jstring name) {
+Java_com_termux_display_Render_initRenderWindow(JNIEnv *env, jclass clazz,
+                                                jstring name) {
     setNativeWindow(env);
     displayServerInit();
 }
@@ -41,6 +41,17 @@ Java_com_termux_display_Render_sendMouseEvent(JNIEnv *env, jobject thiz, jfloat 
                                               jint which_button, jboolean button_down,
                                               jboolean relative) {
     // TODO: implement sendMouseEvent()
+    server_termux_event ev = {
+            .type=EVENT_MOUSE,
+    };
+    ev.mouse={
+            .t=EVENT_MOUSE,
+            .x=x,
+            .y=y,
+            .detail=(uint8_t)which_button,
+            .down=button_down,
+            .relative=relative
+    };
 }
 extern "C"
 JNIEXPORT void JNICALL

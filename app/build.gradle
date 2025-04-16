@@ -43,12 +43,9 @@ android {
 
         implementation project(":terminal-view")
         implementation project(":termux-shared")
-//        implementation project(":termux-x11")
         implementation (project(':termux-x11')){
             exclude group: 'androidx.preference'
         }
-
-        compileOnly project(':termux-display')
     }
 
     defaultConfig {

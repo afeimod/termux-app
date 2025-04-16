@@ -28,7 +28,7 @@ static jobject displayObject;
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_termux_display_Render_initJNIEnv(JNIEnv *env, jobject thiz) {
+Java_com_termux_display_Render_initRenderJNIEnv(JNIEnv *env, jobject thiz) {
     displayObject = env->NewGlobalRef(thiz);;
 }
 
