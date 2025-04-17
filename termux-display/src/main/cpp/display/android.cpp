@@ -42,22 +42,25 @@ Java_com_termux_display_Render_sendMouseEvent(JNIEnv *env, jobject thiz, jfloat 
                                               jboolean relative) {
     // TODO: implement sendMouseEvent()
     server_termux_event ev = {
-            .type=EVENT_MOUSE,
+            .type=EVENT_TOUCH,
     };
     ev.mouse={
-            .t=EVENT_MOUSE,
+            .t=EVENT_TOUCH,
             .x=x,
             .y=y,
             .detail=(uint8_t)which_button,
             .down=button_down,
             .relative=relative
     };
+    sendOutputEvent(ev);
+    LOG_I("Java_com_termux_display_Render_sendMouseEvent");
 }
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_termux_display_Render_sendTouchEvent(JNIEnv *env, jobject thiz, jint action, jint id,
                                               jint x, jint y) {
     // TODO: implement sendTouchEvent()
+    LOG_I("Java_com_termux_display_Render_sendTouchEvent");
 }
 extern "C"
 JNIEXPORT void JNICALL
@@ -77,6 +80,7 @@ JNIEXPORT jboolean JNICALL
 Java_com_termux_display_Render_sendKeyEvent(JNIEnv *env, jobject thiz, jint scan_code,
                                             jint key_code, jboolean key_down) {
     // TODO: implement sendKeyEvent()
+    LOG_I("Java_com_termux_display_Render_sendKeyEvent");
     return true;
 }
 extern "C"

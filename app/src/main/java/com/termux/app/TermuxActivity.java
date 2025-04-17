@@ -26,6 +26,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Gravity;
@@ -253,6 +254,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
 
     public boolean sendTouchEvent(MotionEvent ev) {
+//        Log.d("sendTouchEvent",String.valueOf(inputControllerViewHandled));
         if (inputControlsView.getProfile() != null) {
             int[] view0Location = new int[2];
             int[] viewLocation = new int[2];
@@ -271,7 +273,6 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         if (ev.isFromSource(InputDevice.SOURCE_MOUSE)) {
             return false;
         }
-//                Log.d("sendTouchEvent",String.valueOf(inputControllerViewHandled));
         return processTouchEvent(mMainContentView,ev);
     }
 

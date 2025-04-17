@@ -192,15 +192,17 @@ public class MainActivity extends LoriePreferences implements View.OnApplyWindow
         if (getLorieView().renderMode == BUILTIN_RENDER_SEVER) {
             mRenderInputHandler = new RenderTouchInputHandler(this, new com.termux.display.input.RenderStub.NullStub(),
                 new RenderInputEventSender(getLorieView().renderAdapter));
-        }
-        mInputHandler = new TouchInputHandler(this, new RenderStub.NullStub() {
-            @Override
-            public void swipeDown() {
-            }
-        }, new InputEventSender(lorieView));
-        int touch_sensitivity = preferences.getInt("touch_sensitivity", 1);
-        mInputHandler.setLongPressedDelay(touch_sensitivity);
+        } else {
+            mInputHandler = new TouchInputHandler(this, new RenderStub.NullStub() {
+                @Override
+                public void swipeDown() {
+                }
+            }, new InputEventSender(lorieView));
+            int touch_sensitivity = preferences.getInt("touch_sensitivity", 1);
+            mInputHandler.setLongPressedDelay(touch_sensitivity);
 //        Log.d("MainActivity","touch_sensitivity:"+touch_sensitivity);
+        }
+
         mLorieKeyListener = (v, k, e) -> {
             if (k == KEYCODE_VOLUME_DOWN && preferences.getBoolean("hideEKOnVolDown", false)) {
                 if (e.getAction() == ACTION_UP) {
