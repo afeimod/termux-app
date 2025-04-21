@@ -1,6 +1,8 @@
 #ifndef OUTPUT_EVENT_H
 #define OUTPUT_EVENT_H
+
 #include <stdint.h>
+
 #ifndef EVENT_TYPE_ENUM
 #define EVENT_TYPE_ENUM
 typedef enum {
@@ -25,6 +27,28 @@ typedef enum {
     EVENT_DRAW_FRAME,
 } event_type;
 #endif
+#ifndef SERVER_EVENT_TYPE_ENUM
+#define SERVER_EVENT_TYPE_ENUM
+typedef enum {
+    /// Send when the first pointer touches.
+    SERVER_TOUCH_DOWN = 0,
+    /// Send when the last pointer goes up.
+    SERVER_TOUCH_UP = 1,
+    /// Send when an additional pointer touches.
+    SERVER_TOUCH_POINTER_DOWN = 2,
+    /// Send when an additional pointer goes up.
+    SERVER_TOUCH_POINTER_UP = 3,
+    /// Like `TOUCH_UP`, but the gesture was cancelled.
+    SERVER_TOUCH_CANCEL = 4,
+    /// Send when pointers have been moved.
+    SERVER_TOUCH_MOVE = 5,
+} server_touch_action;
+typedef struct {
+    int x;
+    int y;
+    int id;
+} server_touch_pointer;
+#endif
 typedef struct {
     uint8_t num_pointers;
     uint8_t t;
@@ -38,6 +62,14 @@ typedef union {
     } screenSize;
     server_touch_event touch;
     server_touch_event touch_events[4];
+    struct {
+        server_touch_action action;
+        server_touch_pointer **pointers;
+        uint32_t events;
+        uint32_t num_pointers;
+        uint32_t index;
+        uint64_t time;
+    } raw_touch;
     struct {
         uint8_t t;
         float x, y;
