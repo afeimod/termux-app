@@ -38,7 +38,7 @@ typedef enum {
     SERVER_TOUCH_MOVE = 5,
 } server_touch_action;
 typedef enum {
-    SERVER_MOUSE_UNDFINE = 0,
+    SERVER_MOUSE_UNDEFINE = 0,
     SERVER_MOUSE_LEFT_BUTTON = 1,
     SERVER_MOUSE_MIDDLE_BUTTON = 2,
     SERVER_MOUSE_RIGHT_BUTTON = 3,
