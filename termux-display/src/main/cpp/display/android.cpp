@@ -42,10 +42,10 @@ Java_com_termux_display_Render_sendMouseEvent(JNIEnv *env, jobject thiz, jfloat 
                                               jboolean relative) {
     // TODO: implement sendMouseEvent()
     server_termux_event ev = {
-            .type=EVENT_TOUCH,
+            .type=EVENT_MOUSE,
     };
     ev.mouse={
-            .t=EVENT_TOUCH,
+            .t=EVENT_MOUSE,
             .x=x,
             .y=y,
             .detail=(uint8_t)which_button,
