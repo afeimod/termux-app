@@ -30,19 +30,20 @@ typedef enum {
 #ifndef SERVER_EVENT_TYPE_ENUM
 #define SERVER_EVENT_TYPE_ENUM
 typedef enum {
-    /// Send when the first pointer touches.
     SERVER_TOUCH_DOWN = 0,
-    /// Send when the last pointer goes up.
     SERVER_TOUCH_UP = 1,
-    /// Send when an additional pointer touches.
     SERVER_TOUCH_POINTER_DOWN = 2,
-    /// Send when an additional pointer goes up.
     SERVER_TOUCH_POINTER_UP = 3,
-    /// Like `TOUCH_UP`, but the gesture was cancelled.
     SERVER_TOUCH_CANCEL = 4,
-    /// Send when pointers have been moved.
     SERVER_TOUCH_MOVE = 5,
 } server_touch_action;
+typedef enum {
+    SERVER_MOUSE_UNDFINE = 0,
+    SERVER_MOUSE_LEFT_BUTTON = 1,
+    SERVER_MOUSE_MIDDLE_BUTTON = 2,
+    SERVER_MOUSE_RIGHT_BUTTON = 3,
+    SERVER_MOUSE_SCROLL = 4,
+} server_mouse_action;
 typedef struct {
     int x;
     int y;
