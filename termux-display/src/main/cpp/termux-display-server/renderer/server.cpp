@@ -266,7 +266,7 @@ void serverStart(void *object) {
                         return;
                     }else if(ev.type == EVENT_DRAW_FRAME){
                         if (isRunning && serverRenderer) {
-                            LOG_I("EVENT_DRAW_FRAME");
+//                            LOG_I("EVENT_DRAW_FRAME");
                             serverRenderer->draw();
                         }
                     }
