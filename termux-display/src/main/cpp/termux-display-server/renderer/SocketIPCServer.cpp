@@ -129,8 +129,8 @@ void SocketIPCServer::draw() {
 //    BEGIN_TIME(__FUNCTION__);
     glUseProgram(m_Program);
     {
-        float x_scale = 0.8f;
-        float y_scale = 0.8f;
+        float x_scale = 1.f;
+        float y_scale = 1.f;
         GLfloat vertices[] = {
                 -1.f * x_scale, -1.f * y_scale,
                 1.f * x_scale, -1.f * y_scale,

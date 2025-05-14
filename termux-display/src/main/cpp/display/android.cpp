@@ -53,7 +53,7 @@ Java_com_termux_display_Render_sendMouseEvent(JNIEnv *env, jobject thiz, jfloat 
             .relative=relative
     };
     sendOutputEvent(ev);
-    LOG_I("Java_com_termux_display_Render_sendMouseEvent");
+    LOG_I("SendMouseEvent, x:%f,\ny:%f,\ndetail:%d,\n,down:%d,\nrelative:%d",x,y,which_button, button_down,relative);
 }
 extern "C"
 JNIEXPORT void JNICALL
