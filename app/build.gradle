@@ -19,7 +19,7 @@ android {
     buildFeatures {
         viewBinding true
     }
-    namespace "com.linbox"
+    namespace "com.termux"
     compileSdk project.properties.compileSdkVersion.toInteger()
 //    compileSdk 34
     ndkVersion '25.1.8937393'
