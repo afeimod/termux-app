@@ -581,7 +581,7 @@ public class PackageUtils {
             if (packageInfo == null) return null;
             return DataUtils.bytesToHex(MessageDigest.getInstance("SHA-256").digest(packageInfo.signatures[0].toByteArray()));
         } catch (final Exception e) {
-            return "0000000000000000000000000000000000000000000000000000000000000000";
+            return null;
         }
     }
 
