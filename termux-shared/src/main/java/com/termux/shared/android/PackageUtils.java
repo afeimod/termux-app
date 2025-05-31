@@ -567,27 +567,22 @@ public class PackageUtils {
      * @return Returns the {@code SHA-256 digest}. This will be {@code null} if an exception is raised.
      */
     @Nullable
-public static String getSigningCertificateSHA256DigestForPackage(@NonNull final Context context, @NonNull final String packageName) {
-    try {
-        // >>> 添加绕过签名验证的代码 <<<
-        // 方案1：直接返回固定值（确保返回非null）
-        return "0000000000000000000000000000000000000000000000000000000000000000";
-        
-        // 方案2：返回当前应用自身的签名（可选）
-        // String currentPackage = context.getPackageName();
-        // PackageInfo currentInfo = getPackageInfoForPackage(context, currentPackage, PackageManager.GET_SIGNATURES);
-        // return DataUtils.bytesToHex(MessageDigest.getInstance("SHA-256").digest(currentInfo.signatures[0].toByteArray()));
-        
-        // >>> 原始代码（注释掉）<<<
-        /*
-        PackageInfo packageInfo = getPackageInfoForPackage(context, packageName, PackageManager.GET_SIGNATURES);
-        if (packageInfo == null) return null;
-        return DataUtils.bytesToHex(MessageDigest.getInstance("SHA-256").digest(packageInfo.signatures[0].toByteArray()));
-        */
-    } catch (final Exception e) {
-        return null;
+    public static String getSigningCertificateSHA256DigestForPackage(@NonNull final Context context, @NonNull final String packageName) {
+        try {
+            /*
+             * Todo: We may need AndroidManifest queries entries if package is installed but with a different signature on android 11
+             * https://developer.android.com/training/package-visibility
+             * Need a device that allows (manual) installation of apk with mismatched signature of
+             * sharedUserId apps to test. Currently, if its done, PackageManager just doesn't load
+             * the package and removes its apk automatically if its installed as a user app instead of system app
+             * W/PackageManager: Failed to parse /path/to/com.termux.tasker.apk: Signature mismatch for shared user: SharedUserSetting{xxxxxxx com.termux/10xxx}
+             */
+            PackageInfo currentInfo = getPackageInfoForPackage(context, currentPackage, PackageManager.GET_SIGNATURES);
+            return DataUtils.bytesToHex(MessageDigest.getInstance("SHA-256").digest(currentInfo.signatures[0].toByteArray()));
+        } catch (Exception e) {
+            return "0000000000000000000000000000000000000000000000000000000000000000";
+        }
     }
-}
 
 
 
