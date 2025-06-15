@@ -91,6 +91,7 @@ import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSessionClient;
 import com.termux.view.TerminalView;
 import com.termux.view.TerminalViewClient;
+import com.termux.x11.MainActivity;
 import com.termux.x11.controller.winhandler.ProcessInfo;
 
 import java.io.BufferedReader;
@@ -233,7 +234,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
 
     public void onMenuOpen(boolean isOpen, int flag) {
-        if (isOpen && flag == 0) {
+        if (isOpen /*&& flag == 0*/) {
             setX11FocusedChanged(false);
         } else {
             setX11FocusedChanged(true);
@@ -311,7 +312,8 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         DisplayWindowLinearLayout viewContainer = (DisplayWindowLinearLayout) vGroup.getChildAt(0);
         LinearLayout lorieLayout = (LinearLayout) viewContainer.getChildAt(1);
         lorieLayout.addView(lorieContentView);
-        getSupportFragmentManager().beginTransaction().replace(R.id.id_window_preference, loriePreferenceFragment).commit();
+        setPreferenceViewId(R.id.id_window_preference);
+        showFragment(new LoriePreferenceFragment(null));
 
 
         // Load termux shared preferences
@@ -426,7 +428,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
             @Override
             public void openSoftwareKeyboard() {
-                switchSoftKeyboard(false);
+                MainActivity.toggleKeyboardVisibility(TermuxActivity.this);
             }
 
             @Override
@@ -436,7 +438,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
             @Override
             public void changePreference(String key) {
-                onPreferencesChanged(key);
+                TermuxActivity.this.onPreferencesChanged(key);
             }
 
             @Override
@@ -516,6 +518,11 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
                         mFloatBallMenuClient.onCreate();
                     }
                 }
+            }
+
+            @Override
+            public void onExitApp() {
+                TermuxActivity.this.unlockOrExitApp();
             }
         };
     }
@@ -744,20 +751,35 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
     private void setX11Server() {
         findViewById(com.termux.x11.R.id.exit_button).setOnClickListener((v) -> {
-            if (isExit) {
-                finishActivityIfNotFinishing();
-                Intent exitIntent = new Intent(this, TermuxService.class)
-                    .setAction(TermuxConstants.TERMUX_APP.TERMUX_SERVICE.ACTION_STOP_SERVICE);
-                startService(exitIntent);
-                finishActivityIfNotFinishing();
-            } else {
-                Toast.makeText(this, R.string.exit_toast_text, Toast.LENGTH_SHORT).show();
-                isExit = true;
-                handler.postDelayed(() -> isExit = false, 2000);
-            }
+            exitApp();
         });
         StartEntryClient startEntryClient = new StartEntryClient(this, mTermuxTerminalSessionActivityClient);
         startEntryClient.init();
+    }
+
+    private void exitApp() {
+        if (isExit) {
+            Intent exitIntent = new Intent(this, TermuxService.class)
+                .setAction(TermuxConstants.TERMUX_APP.TERMUX_SERVICE.ACTION_STOP_SERVICE);
+            startService(exitIntent);
+            finishActivityIfNotFinishing();
+        } else {
+            Toast.makeText(this, R.string.exit_toast_text, Toast.LENGTH_SHORT).show();
+            isExit = true;
+            handler.postDelayed(() -> isExit = false, 2000);
+        }
+    }
+    private void unlockOrExitApp() {
+        if (isExit) {
+            Intent exitIntent = new Intent(this, TermuxService.class)
+                .setAction(TermuxConstants.TERMUX_APP.TERMUX_SERVICE.ACTION_STOP_SERVICE);
+            startService(exitIntent);
+            finishActivityIfNotFinishing();
+        } else {
+            Toast.makeText(this, R.string.unlock_exit_toast_text, Toast.LENGTH_SHORT).show();
+            isExit = true;
+            handler.postDelayed(() -> isExit = false, 2000);
+        }
     }
 
     private void startX11Display() {
