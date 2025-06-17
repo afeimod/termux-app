@@ -262,8 +262,6 @@ public class LoriePreferences extends AppCompatActivity implements PreferenceFra
         return true;
     }
 
-    long viewKeyTriggerTime = System.currentTimeMillis();
-
     public boolean back2PreviousMenu() {boolean isSubMenu = getSupportFragmentManager().getBackStackEntryCount() > 1;
         if (isSubMenu) {
             getOnBackPressedDispatcher().onBackPressed();

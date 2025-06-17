@@ -3,6 +3,8 @@ package com.termux.x11;
 import static android.Manifest.permission.WRITE_SECURE_SETTINGS;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static android.os.Build.VERSION.SDK_INT;
+import static android.view.KeyEvent.ACTION_DOWN;
+import static android.view.KeyEvent.ACTION_UP;
 import static android.view.KeyEvent.KEYCODE_BACK;
 import static android.view.KeyEvent.KEYCODE_META_LEFT;
 import static android.view.KeyEvent.KEYCODE_META_RIGHT;
@@ -198,23 +200,25 @@ public class MainActivity extends LoriePreferences {
         mInputHandler.setLongPressedDelay(touch_sensitivity);
 //        Log.d("MainActivity","touch_sensitivity:"+touch_sensitivity);
         mLorieKeyListener = (v, k, e) -> {
-            if ((System.currentTimeMillis() - viewKeyTriggerTime) < 300) {
-                return true;
-            }
-            viewKeyTriggerTime = System.currentTimeMillis();
 
             if (k == KEYCODE_BACK) {
                 if (softKeyboardShown) {
-                    inputMethodManager.hideSoftInputFromWindow(getInstance().getWindow().getDecorView().getRootView().getWindowToken(), 0);
-                    softKeyboardShown = false;
+                    if(e.getAction()==ACTION_UP) {
+                        inputMethodManager.hideSoftInputFromWindow(getInstance().getWindow().getDecorView().getRootView().getWindowToken(), 0);
+                        softKeyboardShown = false;
+                    }
                     return true;
                 }
                 if (null != termuxActivityListener && !mEnableFloatBallMenu) {
-                    releaseSlider(true);
+                    if(e.getAction()==ACTION_UP) {
+                        releaseSlider(true);
+                    }
                 }
                 if (!getX11Focus()) {
-                    if (!back2PreviousMenu()) {
-                        termuxActivityListener.onX11PreferenceSwitchChange(false);
+                    if(e.getAction()==ACTION_UP) {
+                        if (!back2PreviousMenu()) {
+                            termuxActivityListener.onX11PreferenceSwitchChange(false);
+                        }
                     }
                     return true;
                 }

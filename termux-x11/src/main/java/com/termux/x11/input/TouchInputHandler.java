@@ -5,6 +5,7 @@
 package com.termux.x11.input;
 
 import static android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC;
+import static android.view.KeyEvent.ACTION_DOWN;
 import static android.view.KeyEvent.KEYCODE_BACK;
 import static android.view.KeyEvent.KEYCODE_VOLUME_DOWN;
 import static android.view.KeyEvent.KEYCODE_VOLUME_UP;
@@ -793,7 +794,7 @@ public class TouchInputHandler {
         int k = e.getKeyCode();
 
         if (!MainActivity.isConnected()) {
-            if (e.getKeyCode() == KEYCODE_BACK) {
+            if (e.getKeyCode() == KEYCODE_BACK&&e.getAction()==ACTION_DOWN) {
                 mActivity.prepareToExit();
             }
 
