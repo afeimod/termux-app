@@ -1,5 +1,7 @@
 package com.termux.x11;
 
+import static android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC;
+import static android.view.KeyEvent.KEYCODE_BACK;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.annotation.SuppressLint;
@@ -24,6 +26,7 @@ import android.text.Editable;
 import android.text.InputType;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.Surface;
 import android.view.SurfaceHolder;
@@ -798,7 +801,16 @@ public class LorieView extends SurfaceView implements InputStub {
             if (action == KeyEvent.ACTION_UP)
                 keyReleaseHandler.removeMessages(event.getKeyCode());
         }
-
+        int k = event.getKeyCode();
+        if (k == KEYCODE_BACK) {
+            if (event.isFromSource(InputDevice.SOURCE_MOUSE) || event.isFromSource(InputDevice.SOURCE_MOUSE_RELATIVE)) {
+                if (event.getRepeatCount() != 0) // ignore auto-repeat
+                    return true;
+                if (event.getAction() == KeyEvent.ACTION_UP || event.getAction() == KeyEvent.ACTION_DOWN)
+                    sendMouseEvent(-1, -1, InputStub.BUTTON_RIGHT, event.getAction() == KeyEvent.ACTION_DOWN, true);
+                return true;
+            }
+        }
         return super.dispatchKeyEvent(event);
     }
 

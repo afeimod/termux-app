@@ -11,6 +11,7 @@ import android.widget.HorizontalScrollView;
 import com.nineoldandroids.view.ViewHelper;
 import com.termux.app.TermuxActivity;
 import com.termux.app.terminal.utils.ScreenUtils;
+import com.termux.x11.MainActivity;
 
 public class DisplaySlidingWindow extends HorizontalScrollView {
     public enum ContentType {
@@ -144,7 +145,7 @@ public class DisplaySlidingWindow extends HorizontalScrollView {
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
 //        Log.d("onInterceptTouchEvent",String.valueOf(ev.getAction()));
-        if (!mLockContentSlider) {
+        if (!mLockContentSlider&&MainActivity.mLorieViewConnected) {
             mTermuxActivity.sendTouchEvent(ev);
             return false;
         }

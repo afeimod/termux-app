@@ -1,4 +1,10 @@
 #!/data/data/com.termux/files/usr/bin/sh
-pkg remove termux-display-nightly -y
 pkg remove termux-x11-nightly -y
+dpkg -i /data/data/com.termux/files/home/xkeyboard-config_2.45_all.deb
 dpkg -i /data/data/com.termux/files/home/termux-x11-nightly-1.03.10-0-all.deb
+chmod +x /data/data/com.termux/files/usr/libexec/termux-x11/loader.apk
+chmod +x /data/data/com.termux/files/usr/bin/startxserver
+chmod +x /data/data/com.termux/files/usr/bin/stopserver
+chmod +x /data/data/com.termux/files/usr/bin/termux-x11
+chmod +x /data/data/com.termux/files/usr/bin/termux-display
+chmod +x /data/data/com.termux/files/usr/bin/termux-x11-preference

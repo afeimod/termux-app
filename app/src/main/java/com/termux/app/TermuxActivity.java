@@ -265,7 +265,12 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
             getLorieView().screenInfo.offsetX = offsetX;
             getLorieView().screenInfo.offsetY = offsetY;
+            if (extraKeyboardHandleTouchEvent(ev)) {
+                return true;
+            }
+            ev.offsetLocation(0, -ScreenUtils.getStatusHeight());
             inputControlsView.handleTouchEvent(ev);
+            ev.offsetLocation(0, ScreenUtils.getStatusHeight());
             return true;
         }
         if (ev.isFromSource(InputDevice.SOURCE_MOUSE)) {
@@ -273,7 +278,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         }
 //                Log.d("sendTouchEvent",String.valueOf(inputControllerViewHandled));
         if (null != mInputHandler) {
-            if (!inputControllerViewHandled) {
+            if (!inputControllerViewHandled && !extraKeyboardHandleTouchEvent(ev)) {
                 mInputHandler.handleTouchEvent(mMainContentView, getLorieView(), ev);
             }
         }
@@ -417,13 +422,26 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
                     CommandUtils.exec(activity, "chmod", new ArrayList<>(Arrays.asList("+x", TERMUX_FILES_DIR_PATH + "/home/install")));
                     CommandUtils.exec(activity, "chmod", new ArrayList<>(Arrays.asList("+x", TERMUX_FILES_DIR_PATH + "/home/collect_process_info")));
                     FileUtils.copyAssetsFile2Phone(activity, "termux-x11-nightly-1.03.10-0-all.deb");
+                    FileUtils.copyAssetsFile2Phone(activity, "xkeyboard-config_2.45_all.deb");
                     CommandUtils.execInPath(activity, "install", null, "/home/");
                 });
             }
 
             @Override
             public void stopDesktop(Activity activity) {
-                CommandUtils.exec(activity, "stopserver", null);
+                final AlertDialog.Builder b = new AlertDialog.Builder(TermuxActivity.this);
+                b.setIcon(android.R.drawable.ic_dialog_alert);
+                b.setMessage(R.string.stop_desktop_title);
+                b.setPositiveButton(android.R.string.yes, (dialog, id) -> {
+                    dialog.dismiss();
+                    handler.postDelayed(() -> {
+                        openPreference(false);
+                        mLorieViewConnected = false;
+                        CommandUtils.exec(activity, "stopserver", null);
+                    }, 500);
+                });
+                b.setNegativeButton(android.R.string.no, null);
+                b.show();
             }
 
             @Override
@@ -769,6 +787,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
             handler.postDelayed(() -> isExit = false, 2000);
         }
     }
+
     private void unlockOrExitApp() {
         if (isExit) {
             Intent exitIntent = new Intent(this, TermuxService.class)
@@ -942,6 +961,11 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 //            finishActivityIfNotFinishing();
             if (!mEnableFloatBallMenu || mFloatBallMenuClient == null) {
                 mMainContentView.releaseSlider(true);
+                if (!getX11Focus()) {
+                    if (!back2PreviousMenu()) {
+                        termuxActivityListener.onX11PreferenceSwitchChange(false);
+                    }
+                }
             }
         }
     }

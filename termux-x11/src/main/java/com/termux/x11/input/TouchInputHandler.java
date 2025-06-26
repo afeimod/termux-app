@@ -9,7 +9,6 @@ import static android.view.KeyEvent.ACTION_DOWN;
 import static android.view.KeyEvent.KEYCODE_BACK;
 import static android.view.KeyEvent.KEYCODE_VOLUME_DOWN;
 import static android.view.KeyEvent.KEYCODE_VOLUME_UP;
-import static com.termux.x11.input.InputStub.BUTTON_LEFT;
 
 import android.annotation.SuppressLint;
 import android.app.PendingIntent;
@@ -21,7 +20,6 @@ import android.hardware.input.InputManager;
 import android.os.Build;
 import android.os.Handler;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.Display;
 import android.view.GestureDetector;
 import android.view.InputDevice;
@@ -294,7 +292,7 @@ public class TouchInputHandler {
 
             mRenderData.offsetX = offsetX;
             mRenderData.offsetY = offsetY;
-//            event.offsetLocation(-offsetX, -offsetY);
+            event.offsetLocation(-offsetX, -offsetY);
 //            Log.d("TouchInputHandler","offsetx:"+offsetX+" offsety:"+offsetY);
         }
 
@@ -490,6 +488,7 @@ public class TouchInputHandler {
             case "toggle soft keyboard": return (key, down) -> {if(key==KEY_BACK&&p.enableFloatBallMenu.get()){return;} if (down) MainActivity.toggleKeyboardVisibility(mActivity); };
             case "toggle additional key bar": return (key, down) -> { if (down) mActivity.toggleExtraKeys(); };
             case "open preferences": return (key, down) -> { if (down) mActivity.openPreference(true);};
+            case "restart activity":return (key, down) -> {if(down)mActivity.stopDesktop();};
             case "release pointer and keyboard capture": return (key, down) -> { if (down) setCapturingEnabled(false); };
             case "toggle fullscreen": return (key, down) -> { if (down) MainActivity.prefs.fullscreen.put(!MainActivity.prefs.fullscreen.get()); };
             case "exit": return (key, down) -> { if (down) mActivity.prepareToExit();};
@@ -793,7 +792,7 @@ public class TouchInputHandler {
     public boolean sendKeyEvent(KeyEvent e) {
         int k = e.getKeyCode();
 
-        if (!MainActivity.isConnected()) {
+        if (!MainActivity.mLorieViewConnected) {
             if (e.getKeyCode() == KEYCODE_BACK&&e.getAction()==ACTION_DOWN) {
                 mActivity.prepareToExit();
             }

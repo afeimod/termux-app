@@ -61,11 +61,12 @@ EOF
 
 cat <<EOF >$CONTROL_DIR/postinst
 #!/data/data/com.termux/files/usr/bin/sh
-chmod +x /data/data/com.termux/files/usr/libexec/termux-x11/loader.apk
-chmod +x /data/data/com.termux/files/usr/bin/startxserver
-chmod +x /data/data/com.termux/files/usr/bin/stopserver
-chmod +x /data/data/com.termux/files/usr/bin/termux-x11
-chmod +x /data/data/com.termux/files/usr/bin/termux-x11-preference
+chmod 400 /data/data/com.termux/files/usr/libexec/termux-x11/loader.apk
+chmod 400 /data/data/com.termux/files/usr/bin/startxserver
+chmod 400 /data/data/com.termux/files/usr/bin/stopserver
+chmod 400 /data/data/com.termux/files/usr/bin/termux-x11
+chmod 400 /data/data/com.termux/files/usr/bin/termux-display
+chmod 400 /data/data/com.termux/files/usr/bin/termux-x11-preference
 EOF
 
 mkdir -p $PACKAGE_DIR
@@ -107,12 +108,13 @@ BUILD_DATE=$(date +%s)
 } >$DATA_DIR/.BUILDINFO
 {
     echo "post_install() {"
-    echo "    chmod +x /data/data/com.termux/files/usr/libexec/termux-x11/loader.apk"
-    echo "    chmod +x /data/data/com.termux/files/usr/bin/display"
-    echo "    chmod +x /data/data/com.termux/files/usr/bin/startxserver"
-    echo "    chmod +x /data/data/com.termux/files/usr/bin/stopserver"
-    echo "    chmod +x /data/data/com.termux/files/usr/bin/termux-x11"
-    echo "    chmod +x /data/data/com.termux/files/usr/bin/termux-x11-preference"
+    echo "    chmod 400 /data/data/com.termux/files/usr/libexec/termux-x11/loader.apk"
+    echo "    chmod 400 /data/data/com.termux/files/usr/bin/display"
+    echo "    chmod 400 /data/data/com.termux/files/usr/bin/startxserver"
+    echo "    chmod 400 /data/data/com.termux/files/usr/bin/stopserver"
+    echo "    chmod 400 /data/data/com.termux/files/usr/bin/termux-x11"
+    echo "    chmod 400 /data/data/com.termux/files/usr/bin/termux-display"
+    echo "    chmod 400 /data/data/com.termux/files/usr/bin/termux-x11-preference"
     echo "}"
 } >$DATA_DIR/.INSTALL
 

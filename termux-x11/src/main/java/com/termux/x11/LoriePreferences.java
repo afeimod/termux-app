@@ -111,6 +111,7 @@ public class LoriePreferences extends AppCompatActivity implements PreferenceFra
     protected ControlsProfile profile;
     protected String controlsProfile;
     protected Container container;
+    public static boolean mLorieViewConnected = false;
 
     public List<ProcessInfo> getTermuxProcessorInfo(String tag) {
         if (termuxActivityListener != null) {
@@ -262,7 +263,8 @@ public class LoriePreferences extends AppCompatActivity implements PreferenceFra
         return true;
     }
 
-    public boolean back2PreviousMenu() {boolean isSubMenu = getSupportFragmentManager().getBackStackEntryCount() > 1;
+    public boolean back2PreviousMenu() {
+        boolean isSubMenu = getSupportFragmentManager().getBackStackEntryCount() > 1;
         if (isSubMenu) {
             getOnBackPressedDispatcher().onBackPressed();
         }
@@ -407,7 +409,7 @@ public class LoriePreferences extends AppCompatActivity implements PreferenceFra
             setNoActionOptionText(findPreference("mediaKeysAction"), "android media control");
         }
 
-        private void setTitle(CharSequence key, int resId){
+        private void setTitle(CharSequence key, int resId) {
             Preference pref = findPreference(key);
             if (pref != null)
                 pref.setTitle(resId);
@@ -470,27 +472,27 @@ public class LoriePreferences extends AppCompatActivity implements PreferenceFra
 
             boolean enableFloatBallMenu = prefs.enableFloatBallMenu.get();
             if (!enableFloatBallMenu) {
-                setEnabled("enableGlobalFloatBallMenu",false);
-                setVisible("enableGlobalFloatBallMenu",false);
-                setEnabled("stop_desktop",true);
-                setVisible("stop_desktop",true);
-                setEnabled("open_keyboard",true);
-                setVisible("open_keyboard",true);
-                setEnabled("select_controller",true);
-                setVisible("select_controller",true);
-                setVisible("open_progress_manager",true);
-                setVisible("open_progress_manager",true);
+                setEnabled("enableGlobalFloatBallMenu", false);
+                setVisible("enableGlobalFloatBallMenu", false);
+                setEnabled("stop_desktop", true);
+                setVisible("stop_desktop", true);
+                setEnabled("open_keyboard", true);
+                setVisible("open_keyboard", true);
+                setEnabled("select_controller", true);
+                setVisible("select_controller", true);
+                setVisible("open_progress_manager", true);
+                setVisible("open_progress_manager", true);
             } else {
-                setVisible("enableGlobalFloatBallMenu",true);
-                setEnabled("enableGlobalFloatBallMenu",true);
-                setEnabled("stop_desktop",false);
-                setVisible("stop_desktop",false);
-                setEnabled("open_keyboard",false);
-                setVisible("open_keyboard",false);
-                setEnabled("select_controller",false);
-                setVisible("select_controller",false);
-                setVisible("open_progress_manager",false);
-                setVisible("open_progress_manager",false);
+                setVisible("enableGlobalFloatBallMenu", true);
+                setEnabled("enableGlobalFloatBallMenu", true);
+                setEnabled("stop_desktop", false);
+                setVisible("stop_desktop", false);
+                setEnabled("open_keyboard", false);
+                setVisible("open_keyboard", false);
+                setEnabled("select_controller", false);
+                setVisible("select_controller", false);
+                setVisible("open_progress_manager", false);
+                setVisible("open_progress_manager", false);
             }
 
 
@@ -535,8 +537,12 @@ public class LoriePreferences extends AppCompatActivity implements PreferenceFra
                 }
             }
             if (p.getKey().contentEquals("open_keyboard")) {
-                loriePreferences.openPreference(false);
-                handler.postDelayed(()->{loriePreferences.termuxActivityListener.openSoftwareKeyboard();},500);
+                handler.postDelayed(() -> {
+                    if (loriePreferences != null) {
+                        loriePreferences.openPreference(false);
+                        loriePreferences.termuxActivityListener.openSoftwareKeyboard();
+                    }
+                }, 500);
             }
             if (p.getKey().contentEquals("select_controller")) {
                 loriePreferences.showInputControlsDialog();
@@ -565,19 +571,7 @@ public class LoriePreferences extends AppCompatActivity implements PreferenceFra
                     .show();
             }
             if (p.getKey().contentEquals("stop_desktop")) {
-                new android.app.AlertDialog.Builder(getActivity())
-                    .setTitle("Stop Desktop")
-                    .setPositiveButton("OK",
-                        (dialog, whichButton) -> {
-                            if (loriePreferences != null) {
-                                loriePreferences.openPreference(false);
-                                handler.postDelayed(()->{loriePreferences.stopDesktop();},500);
-                            }
-                        }
-                    )
-                    .setNegativeButton("Cancel", (dialog, whichButton) -> dialog.dismiss())
-                    .create()
-                    .show();
+                loriePreferences.stopDesktop();
             }
 
 
@@ -643,10 +637,10 @@ public class LoriePreferences extends AppCompatActivity implements PreferenceFra
 //                putExtra("fromBroadcast", true);
 //                setPackage("com.termux.x11");
 //            }});
-            if ("enableFloatBallMenu".contentEquals(key) ){
+            if ("enableFloatBallMenu".contentEquals(key)) {
                 prefs.enableFloatBallMenu.put((Boolean) newValue);
             }
-            if ("enableGlobalFloatBallMenu".contentEquals(key)){
+            if ("enableGlobalFloatBallMenu".contentEquals(key)) {
                 prefs.enableGlobalFloatBallMenu.put((Boolean) newValue);
             }
             loriePreferences.termuxActivityListener.changePreference(key);
@@ -1170,7 +1164,7 @@ public class LoriePreferences extends AppCompatActivity implements PreferenceFra
     }
 
     public void showInputControlsDialog() {
-        final ContentDialog dialog = new ContentDialog(this, R.layout.input_controls_dialog);
+        final ContentDialog dialog = new ContentDialog(MainActivity.getInstance(), R.layout.input_controls_dialog);
         dialog.setTitle(R.string.input_controls);
         dialog.setIcon(R.drawable.icon_input_controls);
 
@@ -1259,17 +1253,20 @@ public class LoriePreferences extends AppCompatActivity implements PreferenceFra
 
         inputControlsView.invalidate();
     }
-    public void prepareToExit(){
-        if(termuxActivityListener!=null){
+
+    public void prepareToExit() {
+        if (termuxActivityListener != null) {
             termuxActivityListener.onExitApp();
         }
     }
-    public void openPreference(boolean open){
-        if(termuxActivityListener!=null)
+
+    public void openPreference(boolean open) {
+        if (termuxActivityListener != null)
             termuxActivityListener.onX11PreferenceSwitchChange(open);
     }
-    public void releaseSlider(boolean release){
-        if(termuxActivityListener!=null)
+
+    public void releaseSlider(boolean release) {
+        if (termuxActivityListener != null)
             termuxActivityListener.releaseSlider(release);
     }
 }
