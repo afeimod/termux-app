@@ -1,6 +1,7 @@
 package com.termux.app.terminal;
 
 import static android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 
 import android.content.Context;
 import android.util.AttributeSet;
@@ -110,8 +111,11 @@ public class DisplaySlidingWindow extends HorizontalScrollView {
             mMenuWidth = mContentWidth - mMenuRightPadding;
             mHalfMenuWidth = mMenuWidth / 2;
             mLeftMenu.getLayoutParams().width = mMenuWidth;
+            mLeftMenu.getLayoutParams().height = MATCH_PARENT;
             mContent.getLayoutParams().width = mContentWidth;
+            mContent.getLayoutParams().height =MATCH_PARENT;
             mRightMenu.getLayoutParams().width = mMenuWidth;
+            mRightMenu.getLayoutParams().height=MATCH_PARENT;
 //            Log.d("changeLayoutOrientation", "landscape:" + String.valueOf(landscape) + ", mContentWidth" + ":" + String.valueOf(mContentWidth) + ",mScreenHeight:" + String.valueOf(mScreenHeight) + ",mScreenWidth:" + String.valueOf(mScreenWidth));
         }
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
@@ -145,7 +149,7 @@ public class DisplaySlidingWindow extends HorizontalScrollView {
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
 //        Log.d("onInterceptTouchEvent",String.valueOf(ev.getAction()));
-        if (!mLockContentSlider&&MainActivity.mLorieViewConnected) {
+        if (!mLockContentSlider) {
             mTermuxActivity.sendTouchEvent(ev);
             return false;
         }

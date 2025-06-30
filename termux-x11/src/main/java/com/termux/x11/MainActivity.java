@@ -832,7 +832,7 @@ public class MainActivity extends LoriePreferences {
 
         window.setSoftInputMode(reseed ? SOFT_INPUT_ADJUST_RESIZE : SOFT_INPUT_ADJUST_PAN);
 
-        ((FrameLayout) findViewById(android.R.id.content)).getChildAt(0).setFitsSystemWindows(!fullscreen);
+//        ((FrameLayout) findViewById(android.R.id.content)).getChildAt(0).setFitsSystemWindows(!fullscreen);
         if (hasFocus) {
             getLorieView().regenerate();
             getLorieView().requestLayout();
@@ -904,11 +904,10 @@ public class MainActivity extends LoriePreferences {
             if (!connected) {
                 MainActivity.mLorieViewConnected = false;
                 tryConnect();
-            }
-            else {
+            } else {
                 getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
                 openPreference(false);
-                MainActivity.mLorieViewConnected =true;
+                MainActivity.mLorieViewConnected = true;
             }
 
             onWindowFocusChanged(hasWindowFocus());
@@ -1004,6 +1003,7 @@ public class MainActivity extends LoriePreferences {
     public void showProcessManagerDialog() {
         (new TaskManagerDialog(this)).show();
     }
+
     //whether view include (x,y)
     private boolean isTouchPointInView(View view, int x, int y) {
         if (view == null) {
@@ -1022,10 +1022,11 @@ public class MainActivity extends LoriePreferences {
         }
         return false;
     }
-    protected boolean extraKeyboardHandleTouchEvent(MotionEvent event){
-        if(getDisplayTerminalToolbarViewPager().getVisibility()!=VISIBLE){
+
+    protected boolean extraKeyboardHandleTouchEvent(MotionEvent event) {
+        if (getDisplayTerminalToolbarViewPager().getVisibility() != VISIBLE) {
             return false;
         }
-        return isTouchPointInView((View)getDisplayTerminalToolbarViewPager(), (int) event.getRawX(), (int) event.getRawY());
+        return isTouchPointInView((View) getDisplayTerminalToolbarViewPager(), (int) event.getRawX(), (int) event.getRawY());
     }
 }
