@@ -899,15 +899,14 @@ public class MainActivity extends LoriePreferences {
             findViewById(R.id.mouse_buttons).setVisibility(prefs.showMouseHelper.get() && "1".equals(prefs.touchMode.get()) && connected ? VISIBLE : View.GONE);
             findViewById(R.id.stub).setVisibility(connected ? View.INVISIBLE : VISIBLE);
             getLorieView().setVisibility(connected ? VISIBLE : View.INVISIBLE);
+            MainActivity.mLorieViewConnected = connected;
 
             // We should recover connection in the case if file descriptor for some reason was broken...
             if (!connected) {
-                MainActivity.mLorieViewConnected = false;
                 tryConnect();
             } else {
                 getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
                 openPreference(false);
-                MainActivity.mLorieViewConnected = true;
             }
 
             onWindowFocusChanged(hasWindowFocus());

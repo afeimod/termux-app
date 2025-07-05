@@ -428,21 +428,8 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
             }
 
             @Override
-            public void stopDesktop(Activity activity) {
-                final AlertDialog.Builder b = new AlertDialog.Builder(TermuxActivity.this);
-                b.setIcon(android.R.drawable.ic_dialog_alert);
-                b.setMessage(R.string.stop_desktop_title);
-                b.setPositiveButton(android.R.string.yes, (dialog, id) -> {
-                    dialog.dismiss();
-                    handler.postDelayed(() -> {
-                        openPreference(false);
-                        mLorieViewConnected = false;
-                        CommandUtils.exec(activity, "stopserver", null);
-                    }, 500);
-                    mLorieViewConnected=false;
-                });
-                b.setNegativeButton(android.R.string.no, null);
-                b.show();
+            public void stopDesktop() {
+                stopXserver();
             }
 
             @Override
@@ -1429,5 +1416,21 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
     public DisplaySlidingWindow getMainContentView() {
         return mMainContentView;
+    }
+    private void stopXserver(){
+        final AlertDialog.Builder b = new AlertDialog.Builder(this );
+        b.setIcon(android.R.drawable.ic_dialog_alert);
+        b.setMessage(R.string.stop_desktop_title);
+        b.setPositiveButton(android.R.string.yes, (dialog, id) -> {
+            dialog.dismiss();
+            openPreference(false);
+            handler.postDelayed(() -> {
+                mLorieViewConnected = false;
+                CommandUtils.exec(this, "stopserver", null);
+            }, 500);
+            mLorieViewConnected=false;
+        });
+        b.setNegativeButton(android.R.string.no, null);
+        b.show();
     }
 }

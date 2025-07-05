@@ -129,7 +129,7 @@ public class LoriePreferences extends AppCompatActivity implements PreferenceFra
 
         void reInstallX11StartScript(Activity activity);
 
-        void stopDesktop(Activity activity);
+        void stopDesktop();
 
         void openSoftwareKeyboard();
 
@@ -279,7 +279,7 @@ public class LoriePreferences extends AppCompatActivity implements PreferenceFra
 
     public void stopDesktop() {
         if (termuxActivityListener != null) {
-            termuxActivityListener.stopDesktop(this);
+            termuxActivityListener.stopDesktop();
         }
     }
 
