@@ -5,6 +5,7 @@ import static com.termux.shared.termux.TermuxConstants.TERMUX_FILES_DIR_PATH;
 import static com.termux.shared.termux.TermuxConstants.TERMUX_HOME_DIR_PATH;
 import static com.termux.shared.termux.TermuxConstants.TERMUX_TMP_PREFIX_DIR_PATH;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -23,6 +24,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.view.ContextMenu;
@@ -46,6 +48,8 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
@@ -114,6 +118,8 @@ import java.util.List;
  */
 public class TermuxActivity extends com.termux.x11.MainActivity implements ServiceConnection {
     private static final int FILE_REQUEST_BACKUP_CODE = 101;
+    // 添加权限请求码
+    private static final int REQUEST_CODE_STORAGE_PERMISSION = 2000;
 
     private DisplaySlidingWindow mMainContentView;
     /**
@@ -231,6 +237,8 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
     private static final String LOG_TAG = "TermuxActivity";
     private FloatBallMenuClient mFloatBallMenuClient;
+    
+    // 移除首次运行标记及相关代码
 
 
     public void onMenuOpen(boolean isOpen, int flag) {
@@ -536,6 +544,14 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
     private void setFloatBallMenuClient() {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
         mEnableFloatBallMenu = preferences.getBoolean("enableFloatBallMenu", false);
+        
+        // 先销毁现有的浮球菜单
+        if (mFloatBallMenuClient != null) {
+            mFloatBallMenuClient.onDestroy();
+            mFloatBallMenuClient = null;
+        }
+        
+        // 如果需要，重新创建
         if (mEnableFloatBallMenu) {
             mFloatBallMenuClient = new FloatBallMenuClient(this);
             mFloatBallMenuClient.onCreate();
@@ -543,31 +559,8 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
     }
 
     @Override
-    public void onStart() {
+    protected void onStart() {
         super.onStart();
-
-        Logger.logDebug(LOG_TAG, "onStart");
-
-        if (mIsInvalidState) return;
-
-        mIsVisible = true;
-
-        if (mTermuxTerminalSessionActivityClient != null)
-            mTermuxTerminalSessionActivityClient.onStart();
-
-        if (mTermuxTerminalViewClient != null)
-            mTermuxTerminalViewClient.onStart();
-
-        if (mPreferences.isTerminalMarginAdjustmentEnabled())
-            addTermuxActivityRootViewGlobalLayoutListener();
-
-        registerTermuxActivityBroadcastReceiver();
-        setSlideWindowLayout();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
         inputControlsManager.loadProfiles(true);
         mMainContentView.onResume();
         Logger.logVerbose(LOG_TAG, "onResume");
@@ -580,8 +573,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         if (mTermuxTerminalViewClient != null)
             mTermuxTerminalViewClient.onResume();
 
-        // Check if a crash happened on last run of the app or if a plugin crashed and show a
-        // notification with the crash details if it did
+        // 检查如果上次运行崩溃或插件崩溃，显示通知
         TermuxCrashUtils.notifyAppCrashFromCrashLogFile(this, LOG_TAG);
 
         mIsOnResumeAfterOnCreate = false;
@@ -679,17 +671,20 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
         if (mTermuxService.isTermuxSessionsEmpty()) {
             if (mIsVisible) {
-                TermuxInstaller.setupBootstrapIfNeeded(TermuxActivity.this, () -> {
-                    if (mTermuxService == null) return; // Activity might have been destroyed.
-                    try {
-                        boolean launchFailsafe = false;
-                        if (intent != null && intent.getExtras() != null) {
-                            launchFailsafe = intent.getExtras().getBoolean(TERMUX_ACTIVITY.EXTRA_FAILSAFE_SESSION, false);
+                // 添加权限检查
+                checkStoragePermissionsAndRun(() -> {
+                    TermuxInstaller.setupBootstrapIfNeeded(TermuxActivity.this, () -> {
+                        if (mTermuxService == null) return; // Activity might have been destroyed.
+                        try {
+                            boolean launchFailsafe = false;
+                            if (intent != null && intent.getExtras() != null) {
+                                launchFailsafe = intent.getExtras().getBoolean(TERMUX_ACTIVITY.EXTRA_FAILSAFE_SESSION, false);
+                            }
+                            mTermuxTerminalSessionActivityClient.addNewSession(launchFailsafe, null);
+                        } catch (WindowManager.BadTokenException e) {
+                            // Activity finished - ignore.
                         }
-                        mTermuxTerminalSessionActivityClient.addNewSession(launchFailsafe, null);
-                    } catch (WindowManager.BadTokenException e) {
-                        // Activity finished - ignore.
-                    }
+                    });
                 });
             } else {
                 // The service connected while not in foreground - just bail out.
@@ -710,6 +705,35 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
         // Update the {@link TerminalSession} and {@link TerminalEmulator} clients.
         mTermuxService.setTermuxTerminalSessionClient(mTermuxTerminalSessionActivityClient);
+    }
+    
+    // ======== 新增：存储权限检查方法 ========
+    private void checkStoragePermissionsAndRun(Runnable onGranted) {
+        if (hasStoragePermissions()) {
+            onGranted.run();
+        } else {
+            new AlertDialog.Builder(this)
+                .setTitle(R.string.storage_permission_title)
+                .setMessage(R.string.storage_permission_message)
+                .setPositiveButton(R.string.action_grant, (dialog, which) -> {
+                    ActivityCompat.requestPermissions(
+                        TermuxActivity.this,
+                        new String[]{
+                            Manifest.permission.READ_EXTERNAL_STORAGE,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE
+                        },
+                        REQUEST_CODE_STORAGE_PERMISSION
+                    );
+                })
+                .setNegativeButton(R.string.action_exit, (dialog, which) -> finish())
+                .setCancelable(false)
+                .show();
+        }
+    }
+    
+    private boolean hasStoragePermissions() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+            && ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
     }
 
     @Override
@@ -797,9 +821,12 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
     private void setRecoverView() {
         findViewById(R.id.recover_button).setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.setType("*/*");
             intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
+                            Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
             startActivityForResult(intent, FILE_REQUEST_BACKUP_CODE);
         });
     }
@@ -1159,8 +1186,51 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         if (requestCode == PermissionUtils.REQUEST_GRANT_STORAGE_PERMISSION) {
             requestStoragePermission(true);
         }
-        if (requestCode == FILE_REQUEST_BACKUP_CODE) {
-            onRequestLoadBackFile(requestCode, resultCode, data);
+        if (requestCode == FILE_REQUEST_BACKUP_CODE && resultCode == RESULT_OK) {
+            Uri uri = data.getData();
+            if (uri != null) {
+                // 获取持久化的URI权限
+                final int takeFlags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                getContentResolver().takePersistableUriPermission(uri, takeFlags);
+
+                // 在后台线程中处理恢复操作
+                new Thread(() -> {
+                    try (java.io.InputStream in = getContentResolver().openInputStream(uri)) {
+                        // 创建一个临时文件
+                        File tempFile = File.createTempFile("restore_", ".tar.gz", getCacheDir());
+                        try (java.io.FileOutputStream out = new java.io.FileOutputStream(tempFile)) {
+                            byte[] buffer = new byte[8192];
+                            int read;
+                            while ((read = in.read(buffer)) != -1) {
+                                out.write(buffer, 0, read);
+                            }
+                        }
+
+                        // 构建恢复命令
+                        String commandPrefix = new File(getFilesDir(), "home/storage").exists() ? 
+                            "" : "termux-setup-storage; sleep 5s; ";
+                        String command = commandPrefix +
+                            "tar -xzf " + tempFile.getAbsolutePath() + 
+                            " -C " + TERMUX_FILES_DIR_PATH + 
+                            " --recursive-unlink --preserve-permissions && exit\n";
+
+                        // 在UI线程中执行命令
+                        runOnUiThread(() -> {
+                            TerminalSession session = mTermuxTerminalSessionActivityClient.getCurrentStoredSessionOrLast();
+                            if (session != null) {
+                                session.write(command);
+                                mMainContentView.setTerminalViewSwitchSlider(true);
+                            }
+                        });
+
+                        // 删除临时文件
+                        tempFile.delete();
+                    } catch (Exception e) {
+                        runOnUiThread(() -> 
+                            Toast.makeText(this, "Restore failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                    }
+                }).start();
+            }
         }
     }
 
@@ -1179,38 +1249,35 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         });
     }
 
-    private void onRequestLoadBackFile(int requestCode, int resultCode, @Nullable Intent data) {
-        if (resultCode == RESULT_OK) {
-            Uri uri = data.getData();
-            String realPath = FilePathUtils.getPath(this, uri);
-//            Log.d(LOG_TAG,realPath);
-//            ArrayList<String> args = new ArrayList<>();
-//            args.add("-zxf");
-//            args.add(realPath);
-//            args.add("-C");
-//            args.add(TERMUX_FILES_DIR_PATH);
-//            args.add("--recursive-unlink");
-//            args.add("--preserve-permissions");
-//            CommandUtils.exec(this, "tar", args);
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    File file = new File(getFilesDir().getAbsolutePath() + File.separator + "home" + File.separator + "storage");
-                    String command = "termux-setup-storage;sleep 5s;tar -zxf " + realPath + " -C " + TERMUX_FILES_DIR_PATH + " --recursive-unlink" + " --preserve-permissions && exit \n";
-                    if (file.exists()) {
-                        command = "tar -zxf " + realPath + " -C " + TERMUX_FILES_DIR_PATH + " --recursive-unlink" + " --preserve-permissions && exit \n";
-                    }
-                    mTermuxTerminalSessionActivityClient.getCurrentStoredSessionOrLast().write(command);
-                }
-            });
-            mMainContentView.setTerminalViewSwitchSlider(true);
-        }
-    }
-
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         Logger.logVerbose(LOG_TAG, "onRequestPermissionsResult: requestCode: " + requestCode + ", permissions: " + Arrays.toString(permissions) + ", grantResults: " + Arrays.toString(grantResults));
+        
+        // 处理存储权限请求
+        if (requestCode == REQUEST_CODE_STORAGE_PERMISSION) {
+            if (grantResults.length > 0 
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED
+                && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
+                // 权限被授予，重新尝试初始化
+                checkStoragePermissionsAndRun(() -> {
+                    TermuxInstaller.setupBootstrapIfNeeded(TermuxActivity.this, () -> {
+                        if (mTermuxService != null && mTermuxService.isTermuxSessionsEmpty()) {
+                            mTermuxTerminalSessionActivityClient.addNewSession(false, null);
+                        }
+                    });
+                });
+            } else {
+                // 权限被拒绝，提示用户
+                new AlertDialog.Builder(this)
+                    .setTitle(R.string.error_permission_denied)
+                    .setMessage(R.string.error_storage_permission_required)
+                    .setPositiveButton(R.string.action_retry, (d, w) -> checkStoragePermissionsAndRun(() -> {}))
+                    .setNegativeButton(R.string.action_exit, (d, w) -> finish())
+                    .show();
+            }
+        }
+        
         if (requestCode == PermissionUtils.REQUEST_GRANT_STORAGE_PERMISSION) {
             requestStoragePermission(true);
         }
