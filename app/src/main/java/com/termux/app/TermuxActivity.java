@@ -23,8 +23,10 @@ import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
+import android.system.Os;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Gravity;
@@ -231,6 +233,10 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
     private static final String LOG_TAG = "TermuxActivity";
     private FloatBallMenuClient mFloatBallMenuClient;
+    
+    // 新增：首次运行标记
+    private static final String PREFS_NAME = "termux_prefs";
+    private static final String PREF_FIRST_RUN = "first_run";
 
 
     public void onMenuOpen(boolean isOpen, int flag) {
@@ -543,31 +549,8 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
     }
 
     @Override
-    public void onStart() {
+    protected void onStart() {
         super.onStart();
-
-        Logger.logDebug(LOG_TAG, "onStart");
-
-        if (mIsInvalidState) return;
-
-        mIsVisible = true;
-
-        if (mTermuxTerminalSessionActivityClient != null)
-            mTermuxTerminalSessionActivityClient.onStart();
-
-        if (mTermuxTerminalViewClient != null)
-            mTermuxTerminalViewClient.onStart();
-
-        if (mPreferences.isTerminalMarginAdjustmentEnabled())
-            addTermuxActivityRootViewGlobalLayoutListener();
-
-        registerTermuxActivityBroadcastReceiver();
-        setSlideWindowLayout();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
         inputControlsManager.loadProfiles(true);
         mMainContentView.onResume();
         Logger.logVerbose(LOG_TAG, "onResume");
@@ -580,8 +563,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         if (mTermuxTerminalViewClient != null)
             mTermuxTerminalViewClient.onResume();
 
-        // Check if a crash happened on last run of the app or if a plugin crashed and show a
-        // notification with the crash details if it did
+        // 检查如果上次运行崩溃或插件崩溃，显示通知
         TermuxCrashUtils.notifyAppCrashFromCrashLogFile(this, LOG_TAG);
 
         mIsOnResumeAfterOnCreate = false;
@@ -687,6 +669,67 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
                             launchFailsafe = intent.getExtras().getBoolean(TERMUX_ACTIVITY.EXTRA_FAILSAFE_SESSION, false);
                         }
                         mTermuxTerminalSessionActivityClient.addNewSession(launchFailsafe, null);
+                        
+                        // ====== 新增：首次运行检查（在bootstrap安装完成后） ======
+                        new Handler().postDelayed(() -> {
+                            // 获取SharedPreferences实例
+                            SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+                            
+                            // 检查是否是首次运行
+                            boolean isFirstRun = prefs.getBoolean(PREF_FIRST_RUN, true);
+                            
+                            if (isFirstRun) {
+                                Logger.logInfo(LOG_TAG, "First run detected, executing install script");
+                                
+                                try {
+                                    // 获取HOME目录
+                                    File homeDir = TermuxConstants.TERMUX_HOME_DIR;
+                                    File installScript = new File(homeDir, "install.sh");
+                                    
+                                    if (installScript.exists()) {
+                                        Logger.logInfo(LOG_TAG, "Found install.sh script in HOME directory");
+                                        
+                                        // 确保可执行权限
+                                        try {
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                                Os.chmod(installScript.getAbsolutePath(), 0700);
+                                            } else {
+                                                // 旧版本Android使用Runtime.exec
+                                                Runtime.getRuntime().exec("chmod 700 " + installScript.getAbsolutePath());
+                                            }
+                                            Logger.logDebug(LOG_TAG, "Set execute permission for install.sh");
+                                        } catch (Exception e) {
+                                            Logger.logError(LOG_TAG, "Failed to set execute permission: " + e.getMessage());
+                                        }
+                                        
+                                        // 获取当前会话
+                                        TerminalSession session = getCurrentSession();
+                                        if (session != null && session.isRunning()) {
+                                            // 准备执行命令
+                                            String command = "source $PREFIX/etc/profile && " +
+                                                            "nohup bash " + installScript.getAbsolutePath() + 
+                                                            " > $HOME/install.log 2>&1 & disown";
+                                            
+                                            // 在终端中执行命令
+                                            session.write(command + "\r");
+                                            Logger.logInfo(LOG_TAG, "Install script started in terminal session");
+                                        } else {
+                                            Logger.logError(LOG_TAG, "No active terminal session to execute script");
+                                        }
+                                    } else {
+                                        Logger.logInfo(LOG_TAG, "No install.sh script found in HOME directory");
+                                    }
+                                } catch (Exception e) {
+                                    Logger.logError(LOG_TAG, "Error executing install script: " + e.getMessage());
+                                } finally {
+                                    // 标记已运行
+                                    prefs.edit().putBoolean(PREF_FIRST_RUN, false).apply();
+                                    Logger.logDebug(LOG_TAG, "First run flag set to false");
+                                }
+                            }
+                        }, 5000); // 延迟5秒确保环境就绪
+                        // ====== 结束新增 ======
+                        
                     } catch (WindowManager.BadTokenException e) {
                         // Activity finished - ignore.
                     }
