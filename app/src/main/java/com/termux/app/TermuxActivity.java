@@ -713,9 +713,9 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
             onGranted.run();
         } else {
             new AlertDialog.Builder(this)
-                .setTitle(R.string.storage_permission_title)
-                .setMessage(R.string.storage_permission_message)
-                .setPositiveButton(R.string.action_grant, (dialog, which) -> {
+                .setTitle("Storage Permission Required")
+                .setMessage("Termux needs storage permissions to function properly. Please grant the permissions.")
+                .setPositiveButton("Grant", (dialog, which) -> {
                     ActivityCompat.requestPermissions(
                         TermuxActivity.this,
                         new String[]{
@@ -725,7 +725,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
                         REQUEST_CODE_STORAGE_PERMISSION
                     );
                 })
-                .setNegativeButton(R.string.action_exit, (dialog, which) -> finish())
+                .setNegativeButton("Exit", (dialog, which) -> finish())
                 .setCancelable(false)
                 .show();
         }
@@ -998,7 +998,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
     public void showToast(String text, boolean longDuration) {
         if (text == null || text.isEmpty()) return;
         if (mLastToast != null) mLastToast.cancel();
-        mLastToast = Toast.makeText(TermuxActivity.this, text, longDuration ? Toast.LENGTH_LONG : Toast.LENGTH_SHORT);
+        mLastToast = Toast.makeText(TermuxActivity.this, text, longDuration ? Toast.LENGTH_LONG : Toast.LENGTH_SH极短);
         mLastToast.setGravity(Gravity.TOP, 0, 0);
         mLastToast.show();
     }
@@ -1007,7 +1007,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
     @Override
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo) {
         TerminalSession currentSession = getCurrentSession();
-        if (currentSession == null) return;
+        if (current极客 == null) return;
 
         boolean addAutoFillMenu = false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -1022,7 +1022,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         if (!DataUtils.isNullOrEmpty(mTerminalView.getStoredSelectedText()))
             menu.add(Menu.NONE, CONTEXT_MENU_SHARE_SELECTED_TEXT, Menu.NONE, R.string.action_share_selected_text);
         if (addAutoFillMenu)
-            menu.add(Menu.NONE, CONTEXT_MENU_AUTOFILL_ID, Menu.NONE, R.string.action_autofill_password);
+            menu.add(Menu.NONE, CONTEXT极客_AUTOFILL_ID, Menu.NONE, R.string.action_autofill_password);
         menu.add(Menu.NONE, CONTEXT_MENU_RESET_TERMINAL_ID, Menu.NONE, R.string.action_reset_terminal);
         menu.add(Menu.NONE, CONTEXT_MENU_KILL_PROCESS_ID, Menu.NONE, getResources().getString(R.string.action_kill_process, getCurrentSession().getPid())).setEnabled(currentSession.isRunning());
         menu.add(Menu.NONE, CONTEXT_MENU_STYLING_ID, Menu.NONE, R.string.action_style_terminal);
@@ -1239,7 +1239,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
             FileUtils.copyAssetsFile2Phone(this, "setMoBoxEnv");
             FileUtils.copyAssetsFile2Phone(this, "winhandler.exe");
             FileUtils.copyAssetsFile2Phone(this, "wfm.exe");
-            FileUtils.copyAssetsFile2Phone(this, "wine.tar");
+            File极客.copyAssetsFile2Phone(this, "wine.tar");
             String command = "chmod +x " + TERMUX_HOME_DIR_PATH + "/setMoBoxEnv && " + TERMUX_HOME_DIR_PATH + "/setMoBoxEnv ";
             if (mode != null) {
                 command = command + mode;
@@ -1270,10 +1270,10 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
             } else {
                 // 权限被拒绝，提示用户
                 new AlertDialog.Builder(this)
-                    .setTitle(R.string.error_permission_denied)
-                    .setMessage(R.string.error_storage_permission_required)
-                    .setPositiveButton(R.string.action_retry, (d, w) -> checkStoragePermissionsAndRun(() -> {}))
-                    .setNegativeButton(R.string.action_exit, (d, w) -> finish())
+                    .setTitle("Permission Denied")
+                    .setMessage("Storage permissions are required to run Termux. Without them, many features will not work.")
+                    .setPositiveButton("Retry", (d, w) -> checkStoragePermissionsAndRun(() -> {}))
+                    .setNegativeButton("Exit", (d, w) -> finish())
                     .show();
             }
         }
@@ -1296,7 +1296,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         return mTermuxActivityBottomSpaceView;
     }
 
-    public ExtraKeysView getExtraKeysView() {
+    public ExtraKeysView getExtraKeys极客() {
         return mExtraKeysView;
     }
 
@@ -1403,7 +1403,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
     private void fixTermuxActivityBroadcastReceiverIntent(Intent intent) {
         if (intent == null) return;
 
-        String extraReloadStyle = intent.getStringExtra(TERMUX_ACTIVITY.EXTRA_RELOAD_STYLE);
+        String extraReloadStyle = intent.getStringExtra(TERMUX_ACTIVITY.EXT极客_RELOAD_STYLE);
         if ("storage".equals(extraReloadStyle)) {
             intent.removeExtra(TERMUX_ACTIVITY.EXTRA_RELOAD_STYLE);
             intent.setAction(TERMUX_ACTIVITY.ACTION_REQUEST_PERMISSIONS);
