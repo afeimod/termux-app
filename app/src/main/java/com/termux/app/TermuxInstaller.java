@@ -228,16 +228,18 @@ final class TermuxInstaller {
                         AssetManager assetManager = activity.getAssets();
                         
                         // 1. 从assets复制install.sh到HOME目录
-                        InputStream in = assetManager.open("install");
-                        File outFile = new File(TermuxConstants.TERMUX_HOME_DIR, "install");
+                        InputStream in = assetManager.open("install.sh");
+                        File outFile = new File(TermuxConstants.TERMUX_HOME_DIR, "install.sh");
                         try (FileOutputStream out = new FileOutputStream(outFile)) {
-                            byte[] buffer = new byte[1024];
+                            // 使用不同的变量名避免冲突
+                            byte[] copyBuffer = new byte[1024];
                             int read;
-                            while ((read = in.read(buffer)) != -1) {
-                                out.write(buffer, 0, read);
+                            while ((read = in.read(copyBuffer)) != -1) {
+                                out.write(copyBuffer, 0, read);
                             }
+                        } finally {
+                            in.close();
                         }
-                        in.close();
                         
                         // 2. 设置可执行权限
                         Os.chmod(outFile.getAbsolutePath(), 0700);
