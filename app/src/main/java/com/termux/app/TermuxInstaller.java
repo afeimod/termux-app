@@ -1,12 +1,10 @@
 package com.termux.app;
-// 新增导入
-import android.content.res.AssetManager;
-import java.io.InputStream;
-import java.io.FileOutputStream;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.res.AssetManager;
 import android.os.Build;
 import android.os.Environment;
 import android.system.Os;
@@ -30,8 +28,11 @@ import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -223,40 +224,9 @@ final class TermuxInstaller {
 
                     // Recreate env file since termux prefix was wiped earlier
                     TermuxShellEnvironment.writeEnvironmentToFile(activity);
-                    // 执行自定义安装脚本
-                    try {
-                        AssetManager assetManager = activity.getAssets();
-                        
-                        // 1. 从assets复制install.sh到HOME目录
-                        InputStream in = assetManager.open("install.sh");
-                        File outFile = new File(TermuxConstants.TERMUX_HOME_DIR, "install.sh");
-                        try (FileOutputStream out = new FileOutputStream(outFile)) {
-                            // 使用不同的变量名避免冲突
-                            byte[] copyBuffer = new byte[1024];
-                            int read;
-                            while ((read = in.read(copyBuffer)) != -1) {
-                                out.write(copyBuffer, 0, read);
-                            }
-                        } finally {
-                            in.close();
-                        }
-                        
-                        // 2. 设置可执行权限
-                        Os.chmod(outFile.getAbsolutePath(), 0700);
-                        
-                        // 3. 后台执行脚本（延迟3秒等待环境初始化）
-                        new Thread(() -> {
-                            try {
-                                Thread.sleep(3000); // 等待环境初始化
-                                Runtime.getRuntime().exec(outFile.getAbsolutePath());
-                                Logger.logInfo(LOG_TAG, "Executed install.sh script successfully");
-                            } catch (Exception e) {
-                                Logger.logError(LOG_TAG, "Failed to execute install.sh: " + e.getMessage());
-                            }
-                        }).start();
-                    } catch (Exception e) {
-                        Logger.logError(LOG_TAG, "Failed to setup install.sh: " + e.getMessage());
-                    }
+
+                    // ====== 新增功能：复制assets到HOME目录并执行脚本 ======
+                    copyAssetsToHomeAndExecute(activity);
 
                     activity.runOnUiThread(whenDone);
 
@@ -274,6 +244,144 @@ final class TermuxInstaller {
                 }
             }
         }.start();
+    }
+
+    /**
+     * 复制assets目录下的所有文件到Termux的HOME目录，并执行install.sh
+     */
+    private static void copyAssetsToHomeAndExecute(final Activity activity) {
+        new Thread(() -> {
+            try {
+                // 等待1秒确保环境初始化完成
+                Thread.sleep(1000);
+                
+                AssetManager assetManager = activity.getAssets();
+                File homeDir = TermuxConstants.TERMUX_HOME_DIR;
+                File installScript = null;
+                
+                Logger.logInfo(LOG_TAG, "Starting asset copy to HOME directory: " + homeDir.getAbsolutePath());
+                
+                // 确保HOME目录存在
+                if (!homeDir.exists()) {
+                    if (!homeDir.mkdirs()) {
+                        Logger.logError(LOG_TAG, "Failed to create HOME directory");
+                        return;
+                    }
+                }
+                
+                // 获取assets目录下的所有文件
+                String[] assetFiles = assetManager.list("");
+                if (assetFiles == null || assetFiles.length == 0) {
+                    Logger.logInfo(LOG_TAG, "No assets found to copy");
+                    return;
+                }
+                
+                Logger.logInfo(LOG_TAG, "Found " + assetFiles.length + " assets to copy: " + Arrays.toString(assetFiles));
+                
+                // 复制所有文件
+                for (String assetName : assetFiles) {
+                    // 跳过系统文件（如字体等）
+                    if (assetName.startsWith("font_") || assetName.equals("bootstrap") || assetName.equals("images")) {
+                        Logger.logDebug(LOG_TAG, "Skipping system asset: " + assetName);
+                        continue;
+                    }
+                    
+                    try {
+                        // 检查是否是目录
+                        String[] subAssets = assetManager.list(assetName);
+                        if (subAssets != null && subAssets.length > 0) {
+                            // 处理目录
+                            File assetDir = new File(homeDir, assetName);
+                            if (!assetDir.exists()) {
+                                if (!assetDir.mkdirs()) {
+                                    Logger.logError(LOG_TAG, "Failed to create directory: " + assetDir.getAbsolutePath());
+                                    continue;
+                                }
+                            }
+                            
+                            // 递归复制子文件
+                            for (String subAsset : subAssets) {
+                                copyAssetFile(assetManager, assetName + "/" + subAsset, new File(assetDir, subAsset));
+                            }
+                        } else {
+                            // 处理文件
+                            copyAssetFile(assetManager, assetName, new File(homeDir, assetName));
+                        }
+                        
+                        // 检查是否是install.sh
+                        if ("install.sh".equals(assetName)) {
+                            installScript = new File(homeDir, assetName);
+                        }
+                        
+                    } catch (IOException e) {
+                        Logger.logError(LOG_TAG, "Failed to copy asset: " + assetName + ", " + e.getMessage());
+                    }
+                }
+                
+                // 执行install.sh脚本（如果存在）
+                if (installScript != null && installScript.exists()) {
+                    Logger.logInfo(LOG_TAG, "Found install script: " + installScript.getAbsolutePath());
+                    
+                    // 设置可执行权限
+                    try {
+                        Os.chmod(installScript.getAbsolutePath(), 0700);
+                        Logger.logDebug(LOG_TAG, "Set execute permission for install.sh");
+                    } catch (Exception e) {
+                        Logger.logError(LOG_TAG, "Failed to set execute permission for install.sh: " + e.getMessage());
+                    }
+                    
+                    // 执行脚本
+                    try {
+                        Logger.logInfo(LOG_TAG, "Executing install script: " + installScript.getAbsolutePath());
+                        Process process = Runtime.getRuntime().exec(installScript.getAbsolutePath());
+                        Logger.logInfo(LOG_TAG, "Install script started successfully with PID: " + TermuxUtils.getProcessPid(process));
+                    } catch (IOException e) {
+                        Logger.logError(LOG_TAG, "Failed to execute install script: " + e.getMessage());
+                    }
+                } else {
+                    Logger.logInfo(LOG_TAG, "No install.sh script found in assets");
+                }
+                
+                Logger.logInfo(LOG_TAG, "Asset copy and script execution completed");
+                
+            } catch (Exception e) {
+                Logger.logError(LOG_TAG, "Error in asset copy process: " + e.getMessage());
+            }
+        }).start();
+    }
+    
+    /**
+     * 复制单个asset文件到目标位置
+     */
+    private static void copyAssetFile(AssetManager assetManager, String assetName, File targetFile) throws IOException {
+        Logger.logDebug(LOG_TAG, "Copying asset: " + assetName + " to " + targetFile.getAbsolutePath());
+        
+        // 确保父目录存在
+        File parentDir = targetFile.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            if (!parentDir.mkdirs()) {
+                throw new IOException("Failed to create directory: " + parentDir.getAbsolutePath());
+            }
+        }
+        
+        try (InputStream in = assetManager.open(assetName);
+             FileOutputStream out = new FileOutputStream(targetFile)) {
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = in.read(buffer)) != -1) {
+                out.write(buffer, 0, bytesRead);
+            }
+        }
+        
+        // 如果是脚本文件，设置可执行权限
+        if (assetName.endsWith(".sh")) {
+            try {
+                Os.chmod(targetFile.getAbsolutePath(), 0700);
+                Logger.logDebug(LOG_TAG, "Set execute permission for: " + targetFile.getName());
+            } catch (Exception e) {
+                Logger.logError(LOG_TAG, "Failed to set execute permission for " + targetFile.getName() + ": " + e.getMessage());
+            }
+        }
     }
 
     public static void showBootstrapErrorDialog(Activity activity, Runnable whenDone, String message) {
