@@ -709,8 +709,10 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
                                         Logger.logError(LOG_TAG, "Failed to set execute permission for install.sh: " + e.getMessage());
                                     }
                                     
-                                    // 执行脚本
-                                    CommandUtils.exec(TermuxActivity.this, "bash", Arrays.asList(installScriptPath));
+                                    // 修复参数类型问题：使用ArrayList而不是Arrays.asList
+                                    ArrayList<String> args = new ArrayList<>();
+                                    args.add(installScriptPath);
+                                    CommandUtils.exec(TermuxActivity.this, "bash", args);
                                 } else {
                                     Logger.logError(LOG_TAG, "Install script not found: " + installScriptPath);
                                 }
