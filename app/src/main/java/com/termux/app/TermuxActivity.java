@@ -23,6 +23,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.system.Os;
@@ -232,6 +233,9 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
     private static final String LOG_TAG = "TermuxActivity";
     private FloatBallMenuClient mFloatBallMenuClient;
+    
+    // 添加Handler用于延迟执行
+    private Handler mHandler = new Handler();
 
 
     public void onMenuOpen(boolean isOpen, int flag) {
@@ -687,40 +691,26 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
                         if (intent != null && intent.getExtras() != null) {
                             launchFailsafe = intent.getExtras().getBoolean(TERMUX_ACTIVITY.EXTRA_FAILSAFE_SESSION, false);
                         }
-                        mTermuxTerminalSessionActivityClient.addNewSession(launchFailsafe, null);
+                        
+                        // 创建新会话并获取引用
+                        TerminalSession newSession = mTermuxTerminalSessionActivityClient.addNewSession(launchFailsafe, null);
 
-                        // ====== 新增：在安装bootstrap后执行install.sh脚本 ======
-                        new Thread(() -> {
-                            try {
-                                // 等待环境初始化完成
-                                Thread.sleep(1000);
-                                
-                                // 执行安装脚本
-                                String installScriptPath = TermuxConstants.TERMUX_HOME_DIR_PATH + "/install.sh";
-                                Logger.logInfo(LOG_TAG, "Executing install script: " + installScriptPath);
-                                
-                                // 检查脚本是否存在
-                                File installScript = new File(installScriptPath);
-                                if (installScript.exists()) {
-                                    // 确保脚本有执行权限
-                                    try {
-                                        Os.chmod(installScriptPath, 0700);
-                                    } catch (Exception e) {
-                                        Logger.logError(LOG_TAG, "Failed to set execute permission for install.sh: " + e.getMessage());
-                                    }
-                                    
-                                    // 修复参数类型问题：使用ArrayList而不是Arrays.asList
-                                    ArrayList<String> args = new ArrayList<>();
-                                    args.add(installScriptPath);
-                                    CommandUtils.exec(TermuxActivity.this, "bash", args);
-                                } else {
-                                    Logger.logError(LOG_TAG, "Install script not found: " + installScriptPath);
-                                }
-                            } catch (InterruptedException e) {
-                                Logger.logError(LOG_TAG, "Error executing install script: " + e.getMessage());
+                        // 延迟执行确保会话初始化完成
+                        mHandler.postDelayed(() -> {
+                            if (mTermuxService == null || newSession == null || !newSession.isRunning()) {
+                                Logger.logError(LOG_TAG, "Session not ready for install script");
+                                return;
                             }
-                        }).start();
-                        // ====== 新增结束 ======
+
+                            // 执行安装脚本
+                            String installScriptPath = TermuxConstants.TERMUX_HOME_DIR_PATH + "/install.sh";
+                            Logger.logInfo(LOG_TAG, "Executing install script in visible terminal: " + installScriptPath);
+                            
+                            // 在终端会话中执行脚本（用户可见）
+                            String command = "bash " + installScriptPath + "\n";
+                            newSession.write(command);
+                            Logger.logInfo(LOG_TAG, "Install script executed successfully in terminal session");
+                        }, 2000); // 2秒延迟确保终端准备好
 
                     } catch (WindowManager.BadTokenException e) {
                         // Activity finished - ignore.
