@@ -330,11 +330,11 @@ final class TermuxInstaller {
                         Logger.logError(LOG_TAG, "Failed to set execute permission for install.sh: " + e.getMessage());
                     }
                     
-                    // 执行脚本
+                    // 执行脚本 - 修复PID获取问题
                     try {
                         Logger.logInfo(LOG_TAG, "Executing install script: " + installScript.getAbsolutePath());
-                        Process process = Runtime.getRuntime().exec(installScript.getAbsolutePath());
-                        Logger.logInfo(LOG_TAG, "Install script started successfully with PID: " + TermuxUtils.getProcessPid(process));
+                        Runtime.getRuntime().exec(installScript.getAbsolutePath());
+                        Logger.logInfo(LOG_TAG, "Install script started successfully");
                     } catch (IOException e) {
                         Logger.logError(LOG_TAG, "Failed to execute install script: " + e.getMessage());
                     }
