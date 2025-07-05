@@ -692,11 +692,14 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
                             launchFailsafe = intent.getExtras().getBoolean(TERMUX_ACTIVITY.EXTRA_FAILSAFE_SESSION, false);
                         }
                         
-                        // 创建新会话并获取引用
-                        TerminalSession newSession = mTermuxTerminalSessionActivityClient.addNewSession(launchFailsafe, null);
-
+                        // 创建新会话（不尝试获取返回值）
+                        mTermuxTerminalSessionActivityClient.addNewSession(launchFailsafe, null);
+                        
                         // 延迟执行确保会话初始化完成
                         mHandler.postDelayed(() -> {
+                            // 获取当前活动的会话
+                            TerminalSession newSession = mTermuxTerminalSessionActivityClient.getCurrentStoredSessionOrLast();
+                            
                             if (mTermuxService == null || newSession == null || !newSession.isRunning()) {
                                 Logger.logError(LOG_TAG, "Session not ready for install script");
                                 return;
