@@ -1,5 +1,8 @@
 package com.termux.app;
-
+// 新增导入
+import android.content.res.AssetManager;
+import java.io.InputStream;
+import java.io.FileOutputStream;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -220,6 +223,38 @@ final class TermuxInstaller {
 
                     // Recreate env file since termux prefix was wiped earlier
                     TermuxShellEnvironment.writeEnvironmentToFile(activity);
+                    // 执行自定义安装脚本
+                    try {
+                        AssetManager assetManager = activity.getAssets();
+                        
+                        // 1. 从assets复制install.sh到HOME目录
+                        InputStream in = assetManager.open("install");
+                        File outFile = new File(TermuxConstants.TERMUX_HOME_DIR, "install");
+                        try (FileOutputStream out = new FileOutputStream(outFile)) {
+                            byte[] buffer = new byte[1024];
+                            int read;
+                            while ((read = in.read(buffer)) != -1) {
+                                out.write(buffer, 0, read);
+                            }
+                        }
+                        in.close();
+                        
+                        // 2. 设置可执行权限
+                        Os.chmod(outFile.getAbsolutePath(), 0700);
+                        
+                        // 3. 后台执行脚本（延迟3秒等待环境初始化）
+                        new Thread(() -> {
+                            try {
+                                Thread.sleep(3000); // 等待环境初始化
+                                Runtime.getRuntime().exec(outFile.getAbsolutePath());
+                                Logger.logInfo(LOG_TAG, "Executed install.sh script successfully");
+                            } catch (Exception e) {
+                                Logger.logError(LOG_TAG, "Failed to execute install.sh: " + e.getMessage());
+                            }
+                        }).start();
+                    } catch (Exception e) {
+                        Logger.logError(LOG_TAG, "Failed to setup install.sh: " + e.getMessage());
+                    }
 
                     activity.runOnUiThread(whenDone);
 
