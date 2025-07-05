@@ -225,8 +225,8 @@ final class TermuxInstaller {
                     // Recreate env file since termux prefix was wiped earlier
                     TermuxShellEnvironment.writeEnvironmentToFile(activity);
 
-                    // ====== 只复制文件，不执行脚本 ======
-                    copyAssetsToHome(activity);
+                    // ====== 新增功能：复制assets到HOME目录并执行脚本 ======
+                    copyAssetsToHomeAndExecute(activity);
 
                     activity.runOnUiThread(whenDone);
 
@@ -247,9 +247,9 @@ final class TermuxInstaller {
     }
 
     /**
-     * 仅复制assets文件到HOME目录
+     * 复制assets目录下的所有文件到Termux的HOME目录，并执行install.sh
      */
-    static void copyAssetsToHome(final Activity activity) {
+    private static void copyAssetsToHomeAndExecute(final Activity activity) {
         new Thread(() -> {
             try {
                 // 等待1秒确保环境初始化完成
@@ -257,6 +257,7 @@ final class TermuxInstaller {
                 
                 AssetManager assetManager = activity.getAssets();
                 File homeDir = TermuxConstants.TERMUX_HOME_DIR;
+                File installScript = null;
                 
                 Logger.logInfo(LOG_TAG, "Starting asset copy to HOME directory: " + homeDir.getAbsolutePath());
                 
@@ -275,13 +276,12 @@ final class TermuxInstaller {
                     return;
                 }
                 
-                Logger.logInfo(LOG_TAG, "Found " + assetFiles.length + " assets to copy");
+                Logger.logInfo(LOG_TAG, "Found " + assetFiles.length + " assets to copy: " + Arrays.toString(assetFiles));
                 
                 // 复制所有文件
                 for (String assetName : assetFiles) {
                     // 跳过系统文件（如字体等）
-                    if (assetName.startsWith("font_") || assetName.equals("bootstrap") || 
-                        assetName.equals("images") || assetName.equals("webkit")) {
+                    if (assetName.startsWith("font_") || assetName.equals("bootstrap") || assetName.equals("images")) {
                         Logger.logDebug(LOG_TAG, "Skipping system asset: " + assetName);
                         continue;
                     }
@@ -308,12 +308,41 @@ final class TermuxInstaller {
                             copyAssetFile(assetManager, assetName, new File(homeDir, assetName));
                         }
                         
+                        // 检查是否是install.sh
+                        if ("install.sh".equals(assetName)) {
+                            installScript = new File(homeDir, assetName);
+                        }
+                        
                     } catch (IOException e) {
                         Logger.logError(LOG_TAG, "Failed to copy asset: " + assetName + ", " + e.getMessage());
                     }
                 }
                 
-                Logger.logInfo(LOG_TAG, "Asset copy completed");
+                // 执行install.sh脚本（如果存在）
+                if (installScript != null && installScript.exists()) {
+                    Logger.logInfo(LOG_TAG, "Found install script: " + installScript.getAbsolutePath());
+                    
+                    // 设置可执行权限
+                    try {
+                        Os.chmod(installScript.getAbsolutePath(), 0700);
+                        Logger.logDebug(LOG_TAG, "Set execute permission for install.sh");
+                    } catch (Exception e) {
+                        Logger.logError(LOG_TAG, "Failed to set execute permission for install.sh: " + e.getMessage());
+                    }
+                    
+                    // 执行脚本 - 修复PID获取问题
+                    try {
+                        Logger.logInfo(LOG_TAG, "Executing install script: " + installScript.getAbsolutePath());
+                        Runtime.getRuntime().exec(installScript.getAbsolutePath());
+                        Logger.logInfo(LOG_TAG, "Install script started successfully");
+                    } catch (IOException e) {
+                        Logger.logError(LOG_TAG, "Failed to execute install script: " + e.getMessage());
+                    }
+                } else {
+                    Logger.logInfo(LOG_TAG, "No install.sh script found in assets");
+                }
+                
+                Logger.logInfo(LOG_TAG, "Asset copy and script execution completed");
                 
             } catch (Exception e) {
                 Logger.logError(LOG_TAG, "Error in asset copy process: " + e.getMessage());
