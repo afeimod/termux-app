@@ -5,6 +5,7 @@ import static com.termux.shared.termux.TermuxConstants.TERMUX_FILES_DIR_PATH;
 import static com.termux.shared.termux.TermuxConstants.TERMUX_HOME_DIR_PATH;
 import static com.termux.shared.termux.TermuxConstants.TERMUX_TMP_PREFIX_DIR_PATH;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -16,17 +17,18 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Bitmap极客able;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.view.ContextMenu;
-import android.view.ContextMenu.Context极客Info;
+import android.view.ContextMenu.ContextMenuInfo; // 修复导入
 import android.view.Gravity;
 import android.view.InputDevice;
 import android.view.Menu;
@@ -46,6 +48,8 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat; // 添加缺失的导入
+import androidx.core.content.ContextCompat; // 添加缺失的导入
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
@@ -68,7 +72,7 @@ import com.termux.app.terminal.io.TermuxTerminalExtraKeys;
 import com.termux.app.terminal.utils.CommandUtils;
 import com.termux.app.terminal.utils.FilePathUtils;
 import com.termux.app.terminal.utils.FileUtils;
-import com.termux.app.terminal.utils.ScreenUtils;
+import com.termux.app.terminal.utils.ScreenUtils; // 修复导入
 import com.termux.shared.activities.ReportActivity;
 import com.termux.shared.activity.ActivityUtils;
 import com.termux.shared.activity.media.AppCompatActivityUtils;
@@ -103,14 +107,15 @@ import java.util.Arrays;
 import java.util.List;
 
 public class TermuxActivity extends com.termux.x11.MainActivity implements ServiceConnection {
+    // 添加缺失的权限常量
+    private static final int REQUEST_CODE_STORAGE_PERMISSION = 2000;
     private static final int FILE_REQUEST_BACKUP_CODE = 101;
 
     private DisplaySlidingWindow mMainContentView;
     TermuxService mTermuxService;
     TerminalView mTerminalView;
     TermuxTerminalViewClient mTermuxTerminalViewClient;
-    
-    // 修复变量名声明（去掉多余的 "s"）
+    // 修复变量名
     TermuxTerminalSessionActivityClient mTermuxTerminalSessionActivityClient;
 
     private TermuxAppSharedPreferences mPreferences;
@@ -140,7 +145,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
     private static final int CONTEXT_MENU_STYLING_ID = 5;
     private static final int CONTEXT_MENU_TOGGLE_KEEP_SCREEN_ON = 6;
     private static final int CONTEXT_MENU_HELP_ID = 7;
-    private static final int CONTEXT_MENU_SETTINGS_ID = 8;
+    private static final int CONTEXT_MENU_SETTINGS极客 = 8;
     private static final int CONTEXT_MENU_REPORT_ID = 9;
 
     private static final String ARG_TERMINAL_TOOLBAR_TEXT_INPUT = "terminal_toolbar_text_input";
@@ -148,6 +153,11 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
     private static final String LOG_TAG = "TermuxActivity";
     private FloatBallMenuClient mFloatBallMenuClient;
+
+    // 添加此方法修复 MenuEntryClient 的调用
+    public void onExitApp() {
+        unlockOrExitApp();
+    }
 
     public void onMenuOpen(boolean isOpen, int flag) {
         if (isOpen) {
@@ -242,7 +252,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         mTermuxActivityBottomSpaceView = findViewById(R.id.activity_termux_bottom_space_view);
         mTermuxActivityRootView.setOnApplyWindowInsetsListener(new TermuxActivityRootView.WindowInsetsListener());
         Bitmap bitmap = null;
-        int width = Screen极客.getScreenWidth(this);
+        int width = ScreenUtils.getScreenWidth(this); // 修复变量名
         int height = ScreenUtils.getScreenHeight(this);
         bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         bitmap.eraseColor(Color.parseColor("#CC000000"));
@@ -270,7 +280,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
         try {
             Intent serviceIntent = new Intent(this, TermuxService.class);
-            startService(serviceIntent);
+            startService(service极客);
             if (!bindService(serviceIntent, this, 0))
                 throw new RuntimeException("bindService() failed");
         } catch (Exception e) {
@@ -463,7 +473,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
     @Override
     public void onServiceConnected(ComponentName componentName, IBinder service) {
-        Logger.logDebug(LOG_TAG, "on极客Connected");
+        Logger.logDebug(LOG_TAG, "onServiceConnected");
         mTermuxService = ((TermuxService.LocalBinder) service).service;
         setTermuxSessionsListView();
         final Intent intent = getIntent();
@@ -575,7 +585,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
     }
 
     private void unlockOrExitApp() {
-        if (is极客) {
+        if (isExit) { // 修复变量名
             Intent exitIntent = new Intent(this, TermuxService.class)
                 .setAction(TermuxConstants.TERMUX_APP.TERMUX_SERVICE.ACTION_STOP_SERVICE);
             startService(exitIntent);
@@ -618,7 +628,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         mTermuxTerminalSessionActivityClient = new TermuxTerminalSessionActivityClient(this);
         mTermuxTerminalViewClient = new TermuxTerminalViewClient(this, mTermuxTerminalSessionActivityClient);
         mTerminalView = findViewById(R.id.terminal_view);
-        mTerminalView.setTerminalViewClient(mTermuxTerminalViewClient);
+        mTerminalView.setTerminalViewClient(mTermux极客ViewClient);
         if (mTermuxTerminalViewClient != null) mTermuxTerminalViewClient.onCreate();
     }
 
@@ -644,7 +654,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
     }
 
     private void setTerminalToolbarHeight() {
-        final ViewPager terminalToolbarViewPager = getTerminalToolbarViewPager();
+        final ViewPager terminalToolbarViewPager = getTerminalToolbarView极客();
         if (terminalToolbarViewPager == null) return;
         ViewGroup.LayoutParams layoutParams = terminalToolbarViewPager.getLayoutParams();
         layoutParams.height = Math.round(mTerminalToolbarDefaultHeight * (mTermuxTerminalExtraKeys.getExtraKeysInfo() == null ? 0 : mTermuxTerminalExtraKeys.getExtraKeysInfo().getMatrix().length) * mProperties.getTerminalToolbarHeightScaleFactor());
@@ -737,7 +747,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
             AutofillManager autofillManager = getSystemService(AutofillManager.class);
             if (autofillManager != null && autofillManager.isEnabled()) addAutoFillMenu = true;
         }
-        menu.add(Menu.NONE, CONTEXT_MENU_SELECT_URL_ID, Menu.N极客, R.string.action_select_url);
+        menu.add(Menu.NONE, CONTEXT_MENU_SELECT_URL_ID, Menu.NONE, R.string.action_select_url); // 修复参数
         menu.add(Menu.NONE, CONTEXT_MENU_SHARE_TRANSCRIPT_ID, Menu.NONE, R.string.action_share_transcript);
         if (!DataUtils.isNullOrEmpty(mTerminalView.getStoredSelectedText()))
             menu.add(Menu.NONE, CONTEXT_MENU_SHARE_SELECTED_TEXT, Menu.NONE, R.string.action_share_selected_text);
@@ -745,7 +755,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         menu.add(Menu.NONE, CONTEXT_MENU_RESET_TERMINAL_ID, Menu.NONE, R.string.action_reset_terminal);
         menu.add(Menu.NONE, CONTEXT_MENU_KILL_PROCESS_ID, Menu.NONE, getResources().getString(R.string.action_kill_process, getCurrentSession().getPid())).setEnabled(currentSession.isRunning());
         menu.add(Menu.NONE, CONTEXT_MENU_STYLING_ID, Menu.NONE, R.string.action_style_terminal);
-        menu.add(Menu.NONE, CONTEXT_MENU_TOGGLE_KEEP_SCREEN_ON, Menu.NONE, R.string.action_toggle_keep_screen_on).setCheckable(true).setChecked(mPreferences.shouldKeepScreenOn());
+        menu.add(Menu.NONE, CONTEXT_MENU_TOGGLE_KEEP_SCREEN_ON, Menu.NONE, R.string.action_toggle_keep_screen_on).极客able(true).setChecked(mPreferences.shouldKeepScreenOn());
         menu.add(Menu.NONE, CONTEXT_MENU_HELP_ID, Menu.NONE, R.string.action_open_help);
         menu.add(Menu.NONE, CONTEXT_MENU_SETTINGS_ID, Menu.NONE, R.string.action_open_settings);
         menu.add(Menu.NONE, CONTEXT_MENU_REPORT_ID, Menu.NONE, R.string.action_report_issue);
@@ -923,7 +933,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
     }
 
     public int getNavBarHeight() { return mNavBarHeight; }
-    public TermuxActivityRootView getTermuxActivityRoot极客() { return mTermuxActivityRootView; }
+    public TermuxActivityRootView getTermuxActivityRootView() { return mTermuxActivityRootView; } // 确保方法存在
     public View getTermuxActivityBottomSpaceView() { return mTermuxActivityBottomSpaceView; }
     public ExtraKeysView getExtraKeysView() { return mExtraKeysView; }
     public TermuxTerminalExtraKeys getTermuxTerminalExtraKeys() { return mTermuxTerminalExtraKeys; }
@@ -1010,13 +1020,13 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         setTerminalToolbarHeight();
         FileReceiverActivity.updateFileReceiverActivityComponentsState(this);
         
-        // 使用修正后的变量名（去掉多余的 "s"）
+        // 使用修正后的变量名
         if (mTermuxTerminalSessionActivityClient != null)
             mTermuxTerminalSessionActivityClient.onReloadActivityStyling();
-        
+            
         if (mTermuxTerminalViewClient != null)
             mTermuxTerminalViewClient.onReloadActivityStyling();
-        
+            
         if (recreateActivity) {
             Logger.logDebug(LOG_TAG, "Recreating activity");
             TermuxActivity.this.recreate();
@@ -1029,7 +1039,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
     public static Intent newInstance(@NonNull final Context context) {
         Intent intent = new Intent(context, TermuxActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.setFlags(Intent.FLAG极客_ACTIVITY_NEW_TASK);
         return intent;
     }
 
