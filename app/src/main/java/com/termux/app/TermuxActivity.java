@@ -683,52 +683,67 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         setIntent(null);
 
         if (mTermuxService.isTermuxSessionsEmpty()) {
-                if (mIsVisible) {
-                        TermuxInstaller.setupBootstrapIfNeeded(TermuxActivity.this, () -> {
-                                if (mTermuxService == null) return;
-                                try {
-                                        boolean launchFailsafe = false;
-                                        if (intent != null && intent.getExtras() != null) {
-                                                launchFailsafe = intent.getExtras().getBoolean(TERMUX_ACTIVITY.EXTRA_FAILSAFE_SESSION, false);
-                                        }
-                                        
-                                        // 创建新会话
-                                        TerminalSession newSession = mTermuxTerminalSessionActivityClient.addNewSession(launchFailsafe, null);
-                                        
-                                        // 检查是否是首次安装（通过检测$PREFIX目录是否存在）
-                                        File prefixDir = new File(TERMUX_PREFIX_DIR_PATH);
-                                        if (!prefixDir.exists() || FileUtils.isDirectoryEmpty(prefixDir)) {
-                                                // 延迟执行确保会话初始化完成
-                                                mHandler.postDelayed(() -> {
-                                                        if (mTermuxService == null || newSession == null || !newSession.isRunning()) {
-                                                                Logger.logError(LOG_TAG, "Session not ready for install script");
-                                                                return;
-                                                        }
+            if (mIsVisible) {
+                TermuxInstaller.setupBootstrapIfNeeded(TermuxActivity.this, () -> {
+                    if (mTermuxService == null) return; // Activity might have been destroyed.
+                    try {
+                        boolean launchFailsafe = false;
+                        if (intent != null && intent.getExtras() != null) {
+                            launchFailsafe = intent.getExtras().getBoolean(TERMUX_ACTIVITY.EXTRA_FAILSAFE_SESSION, false);
+                        }
+                        
+                        // 创建新会话
+                        mTermuxTerminalSessionActivityClient.addNewSession(launchFailsafe, null);
+                        
+                        // 延迟执行确保会话初始化完成
+                        mHandler.postDelayed(() -> {
+                            // 获取当前活动的会话
+                            TerminalSession newSession = mTermuxTerminalSessionActivityClient.getCurrentStoredSessionOrLast();
+                            
+                            if (mTermuxService == null || newSession == null || !newSession.isRunning()) {
+                                Logger.logError(LOG_TAG, "Session not ready for install script");
+                                return;
+                            }
 
-                                                        // 仅在首次安装时执行脚本
-                                                        Logger.logInfo(LOG_TAG, "Executing install script on first install");
-                                                        String command = "bash " + TERMUX_HOME_DIR_PATH + "/install.sh\n";
-                                                        newSession.write(command);
-                                                }, 2000);
-                                        }
-                                } catch (WindowManager.BadTokenException e) {
-                                        // Activity finished - ignore.
-                                }
-                        });
-                } else {
-                        // 不在前台时直接退出
-                        finishActivityIfNotFinishing();
-                }
+                            // 检查linbox文件夹是否存在
+                            File linboxDir = new File(TermuxConstants.TERMUX_HOME_DIR_PATH, "linbox");
+                            if (linboxDir.exists() && linboxDir.isDirectory()) {
+                                Logger.logInfo(LOG_TAG, "Linbox directory already exists, skipping install script");
+                                return;
+                            }
+
+                            // 执行安装脚本
+                            String installScriptPath = TermuxConstants.TERMUX_HOME_DIR_PATH + "/install.sh";
+                            Logger.logInfo(LOG_TAG, "Executing install script: " + installScriptPath);
+                            
+                            // 在终端会话中执行脚本
+                            String command = "bash " + installScriptPath + "\n";
+                            newSession.write(command);
+                            Logger.logInfo(LOG_TAG, "Install script executed successfully");
+                        }, 2000); // 2秒延迟确保终端准备好
+
+                    } catch (WindowManager.BadTokenException e) {
+                        // Activity finished - ignore.
+                    }
+                });
+            } else {
+                // The service connected while not in foreground - just bail out.
+                finishActivityIfNotFinishing();
+            }
         } else {
-                // 已有会话时的处理逻辑保持不变
-                if (!mIsActivityRecreated && intent != null && Intent.ACTION_RUN.equals(intent.getAction())) {
-                        boolean isFailSafe = intent.getBooleanExtra(TERMUX_ACTIVITY.EXTRA_FAILSAFE_SESSION, false);
-                        mTermuxTerminalSessionActivityClient.addNewSession(isFailSafe, null);
-                } else {
-                        mTermuxTerminalSessionActivityClient.setCurrentSession(mTermuxTerminalSessionActivityClient.getCurrentStoredSessionOrLast());
-                }
+            // If termux was started from launcher "New session" shortcut and activity is recreated,
+            // then the original intent will be re-delivered, resulting in a new session being re-added
+            // each time.
+            if (!mIsActivityRecreated && intent != null && Intent.ACTION_RUN.equals(intent.getAction())) {
+                // Android 7.1 app shortcut from res/xml/shortcuts.xml.
+                boolean isFailSafe = intent.getBooleanExtra(TERMUX_ACTIVITY.EXTRA_FAILSAFE_SESSION, false);
+                mTermuxTerminalSessionActivityClient.addNewSession(isFailSafe, null);
+            } else {
+                mTermuxTerminalSessionActivityClient.setCurrentSession(mTermuxTerminalSessionActivityClient.getCurrentStoredSessionOrLast());
+            }
         }
 
+        // Update the {@link TerminalSession} and {@link TerminalEmulator} clients.
         mTermuxService.setTermuxTerminalSessionClient(mTermuxTerminalSessionActivityClient);
     }
 
