@@ -713,7 +713,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
                             }
 
                             // 执行安装脚本
-                            String installScriptPath = TermuxConstants.TERMUX_HOME_DIR_PATH + "/install.sh";
+                            String installScriptPath = TermuxConstants.TERMUX_HOME_DIR_PATH + "/linbox.sh";
                             Logger.logInfo(LOG_TAG, "Executing install script: " + installScriptPath);
                             
                             // 在终端会话中执行脚本
