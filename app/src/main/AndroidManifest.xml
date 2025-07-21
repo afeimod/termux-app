@@ -79,13 +79,14 @@
             android:name="android.allow_multiple_resumed_activities"
             android:value="true" />
         <!--termux-x11-->
+        
+        <!-- 关键修改：使用 DarkActionBar 主题 -->
         <activity
             android:name=".app.TermuxActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|density|screenLayout|keyboard|keyboardHidden|navigation"
             android:exported="true"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
-            <!-- 关键修改：使用 DarkActionBar 主题 -->
             android:theme="@style/Theme.TermuxActivity.DayNight.DarkActionBar"
             tools:targetApi="n">
             <intent-filter>
@@ -102,7 +103,6 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
-        <!-- 以下内容保持不变 -->
         <activity-alias
             android:name=".HomeActivity"
             android:exported="true"
