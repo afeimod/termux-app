@@ -318,13 +318,11 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         mMainContentView.setTermuxActivity(this);
 
         ViewGroup vGroup = findViewById(R.id.id_termux_layout);
-
         DisplayWindowLinearLayout viewContainer = (DisplayWindowLinearLayout) vGroup.getChildAt(0);
         LinearLayout lorieLayout = (LinearLayout) viewContainer.getChildAt(1);
         lorieLayout.addView(lorieContentView);
         setPreferenceViewId(R.id.id_window_preference);
         showFragment(new LoriePreferenceFragment(null));
-
 
         // Load termux shared preferences
         // This will also fail if TermuxConstants.TERMUX_PACKAGE_NAME does not equal applicationId
@@ -373,8 +371,10 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         setRecoverView();
         setX11Server();
         setBackupView();
+        
+        // 强制启用悬浮菜单
+        mEnableFloatBallMenu = true;
         setFloatBallMenuClient();
-
 
         try {
             // Start the {@link TermuxService} and make it run regardless of who is bound to it
@@ -398,6 +398,21 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         // Send the {@link TermuxConstants#BROADCAST_TERMUX_OPENED} broadcast to notify apps that Termux
         // app has been opened.
         TermuxUtils.sendTermuxOpenedBroadcast(this);
+        
+        // 延迟执行确保UI初始化完成
+        new Handler().postDelayed(() -> {
+            // 打开左滑菜单（终端界面）
+            getDrawer().openDrawer(GravityCompat.START);
+            
+            // 确保显示终端视图
+            mMainContentView.setTerminalViewSwitchSlider(true);
+            
+            // 关闭X11视图
+            if (mMainContentView != null) {
+                mMainContentView.setX11PreferenceSwitchSlider(false);
+            }
+        }, 300);
+
         termuxActivityListener = new TermuxActivityListener() {
             @Override
             public void onX11PreferenceSwitchChange(boolean isOpen) {
@@ -539,8 +554,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
     }
 
     private void setFloatBallMenuClient() {
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
-        mEnableFloatBallMenu = preferences.getBoolean("enableFloatBallMenu", false);
+        // 强制创建悬浮菜单，忽略SharedPreferences设置
         if (mEnableFloatBallMenu) {
             mFloatBallMenuClient = new FloatBallMenuClient(this);
             mFloatBallMenuClient.onCreate();
@@ -694,36 +708,8 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
                         
                         // 创建新会话
                         mTermuxTerminalSessionActivityClient.addNewSession(launchFailsafe, null);
-                        
-                        // 延迟执行确保会话初始化完成
-                        mHandler.postDelayed(() -> {
-                            // 获取当前活动的会话
-                            TerminalSession newSession = mTermuxTerminalSessionActivityClient.getCurrentStoredSessionOrLast();
-                            
-                            if (mTermuxService == null || newSession == null || !newSession.isRunning()) {
-                                Logger.logError(LOG_TAG, "Session not ready for install script");
-                                return;
-                            }
-
-                            // 检查linbox文件夹是否存在
-                            File linboxDir = new File(TermuxConstants.TERMUX_HOME_DIR_PATH, "linbox");
-                            if (linboxDir.exists() && linboxDir.isDirectory()) {
-                                Logger.logInfo(LOG_TAG, "Linbox directory already exists, skipping install script");
-                                return;
-                            }
-
-                            // 执行安装脚本
-                            String installScriptPath = TermuxConstants.TERMUX_HOME_DIR_PATH + "/linbox.sh";
-                            Logger.logInfo(LOG_TAG, "Executing install script: " + installScriptPath);
-                            
-                            // 在终端会话中执行脚本
-                            String command = "bash " + installScriptPath + "\n";
-                            newSession.write(command);
-                            Logger.logInfo(LOG_TAG, "Install script executed successfully");
-                        }, 2000); // 2秒延迟确保终端准备好
-
                     } catch (WindowManager.BadTokenException e) {
-                        // Activity finished - ignore.
+                        // ignore.
                     }
                 });
             } else {
