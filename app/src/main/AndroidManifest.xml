@@ -85,7 +85,8 @@
             android:exported="true"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
-            android:theme="@style/Theme.TermuxActivity.DayNight.NoActionBar"
+            <!-- 关键修改：使用 DarkActionBar 主题 -->
+            android:theme="@style/Theme.TermuxActivity.DayNight.DarkActionBar"
             tools:targetApi="n">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -101,6 +102,7 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
+        <!-- 以下内容保持不变 -->
         <activity-alias
             android:name=".HomeActivity"
             android:exported="true"
