@@ -400,18 +400,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
         TermuxUtils.sendTermuxOpenedBroadcast(this);
         
         // 延迟执行确保UI初始化完成
-        new Handler().postDelayed(() -> {
-            // 打开左滑菜单（终端界面）
-            getDrawer().openDrawer(GravityCompat.START);
-            
-            // 确保显示终端视图
-            mMainContentView.setTerminalViewSwitchSlider(true);
-            
-            // 关闭X11视图
-            if (mMainContentView != null) {
-                mMainContentView.setX11PreferenceSwitchSlider(false);
-            }
-        }, 300);
+        
 
         termuxActivityListener = new TermuxActivityListener() {
             @Override
