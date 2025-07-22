@@ -502,9 +502,15 @@ public class TouchInputHandler {
                     
                     // 确保视图已获得焦点
                     View focusView = mActivity.getCurrentFocus();
-                    if (focusView == null) {
-                        mActivity.getLorieView().requestFocus();
+                    
+                    // 优先使用 LorieView 作为焦点视图
+                    if (focusView == null || !(focusView instanceof LorieView)) {
                         focusView = mActivity.getLorieView();
+                    }
+                    
+                    // 如果仍然没有焦点视图，使用活动根视图
+                    if (focusView == null) {
+                        focusView = mActivity.getWindow().getDecorView().findViewById(android.R.id.content);
                     }
                     
                     // 防重入检查：300ms内不重复触发
@@ -538,17 +544,33 @@ public class TouchInputHandler {
                 return;
             }
             
+            // 确保焦点视图正确
+            if (focusView == null) {
+                focusView = mActivity.getLorieView();
+            }
+            
             // 直接检查键盘当前是否可见
             boolean isKeyboardVisible = imm.isAcceptingText();
             
             if (isKeyboardVisible) {
-                // 隐藏键盘
-                imm.hideSoftInputFromWindow(focusView.getWindowToken(), 0);
+                // 隐藏键盘 - 使用 HIDE_NOT_ALWAYS 避免意外关闭
+                imm.hideSoftInputFromWindow(focusView.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
             } else {
                 // 确保焦点视图获得焦点
-                focusView.requestFocus();
-                // 显示键盘
-                imm.showSoftInput(focusView, InputMethodManager.SHOW_IMPLICIT);
+                if (focusView != null) {
+                    focusView.requestFocus();
+                }
+                
+                // 延迟显示键盘以确保焦点已设置
+                new Handler().postDelayed(() -> {
+                    try {
+                        if (focusView != null) {
+                            imm.showSoftInput(focusView, InputMethodManager.SHOW_IMPLICIT);
+                        }
+                    } catch (Exception e) {
+                        android.util.Log.e("TouchInputHandler", "Error showing keyboard", e);
+                    }
+                }, 50); // 50ms 延迟确保焦点设置完成
             }
         } catch (Exception e) {
             // 捕获并记录异常，防止崩溃
