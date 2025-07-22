@@ -422,7 +422,7 @@ public class TouchInputHandler {
     }
 
     public static boolean isExternal(InputDevice d) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_COdes.Q)
             return d.isExternal();
 
         try {
@@ -544,28 +544,26 @@ public class TouchInputHandler {
                 return;
             }
             
-            // 确保焦点视图正确
-            if (focusView == null) {
-                focusView = mActivity.getLorieView();
-            }
+            // 创建最终变量用于lambda表达式
+            final View finalFocusView = (focusView != null) ? focusView : mActivity.getLorieView();
             
             // 直接检查键盘当前是否可见
             boolean isKeyboardVisible = imm.isAcceptingText();
             
             if (isKeyboardVisible) {
                 // 隐藏键盘 - 使用 HIDE_NOT_ALWAYS 避免意外关闭
-                imm.hideSoftInputFromWindow(focusView.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+                imm.hideSoftInputFromWindow(finalFocusView.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
             } else {
                 // 确保焦点视图获得焦点
-                if (focusView != null) {
-                    focusView.requestFocus();
+                if (finalFocusView != null) {
+                    finalFocusView.requestFocus();
                 }
                 
                 // 延迟显示键盘以确保焦点已设置
                 new Handler().postDelayed(() -> {
                     try {
-                        if (focusView != null) {
-                            imm.showSoftInput(focusView, InputMethodManager.SHOW_IMPLICIT);
+                        if (finalFocusView != null) {
+                            imm.showSoftInput(finalFocusView, InputMethodManager.SHOW_IMPLICIT);
                         }
                     } catch (Exception e) {
                         android.util.Log.e("TouchInputHandler", "Error showing keyboard", e);
