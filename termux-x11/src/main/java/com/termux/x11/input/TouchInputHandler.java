@@ -55,8 +55,7 @@ import java.util.function.BiConsumer;
 public class TouchInputHandler {
     private static final float EPSILON = 0.001f;
     
-    // 添加键盘状态跟踪和防重入机制
-    private static boolean sKeyboardActive = false;
+    // 添加防重入机制
     private static long sLastToggleTime = 0;
     private static final long MIN_TOGGLE_INTERVAL = 300; // 300ms防抖动间隔
 
@@ -531,38 +530,30 @@ public class TouchInputHandler {
         }
     }
 
-    // 安全切换键盘的方法
+    // 安全切换键盘的方法 - 修复悬浮菜单重复调用问题
     private void toggleKeyboardSafely(View focusView) {
         try {
             InputMethodManager imm = (InputMethodManager) mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);
-            if (imm != null) {
-                if (!sKeyboardActive) {
-                    // 显示键盘前确保焦点
-                    focusView.requestFocus();
-                    
-                    // 显示键盘
-                    imm.showSoftInput(focusView, InputMethodManager.SHOW_IMPLICIT);
-                    sKeyboardActive = true;
-                } else {
-                    // 隐藏键盘
-                    imm.hideSoftInputFromWindow(focusView.getWindowToken(), 0);
-                    sKeyboardActive = false;
-                }
+            if (imm == null) {
+                return;
+            }
+            
+            // 直接检查键盘当前是否可见
+            boolean isKeyboardVisible = imm.isAcceptingText();
+            
+            if (isKeyboardVisible) {
+                // 隐藏键盘
+                imm.hideSoftInputFromWindow(focusView.getWindowToken(), 0);
+            } else {
+                // 确保焦点视图获得焦点
+                focusView.requestFocus();
+                // 显示键盘
+                imm.showSoftInput(focusView, InputMethodManager.SHOW_IMPLICIT);
             }
         } catch (Exception e) {
             // 捕获并记录异常，防止崩溃
             android.util.Log.e("TouchInputHandler", "Error toggling keyboard", e);
-            sKeyboardActive = false; // 出错时重置状态
         }
-    }
-    
-    // 键盘状态管理方法
-    public static void setKeyboardActive(boolean active) {
-        sKeyboardActive = active;
-    }
-    
-    public static boolean isKeyboardActive() {
-        return sKeyboardActive;
     }
 
     public PendingIntent extractIntentFromPreferences(Prefs p, String name, int requestCode) {
@@ -639,7 +630,7 @@ public class TouchInputHandler {
         if (mInputStrategy instanceof InputStrategyInterface.TrackpadInputStrategy || mInputStrategy instanceof InputStrategyInterface.SimulatedTouchInputStrategy) {
             float[] imagePoint = {screenX * mRenderData.scale.x, screenY * mRenderData.scale.y};
             if (mRenderData.setCursorPosition(imagePoint[0], imagePoint[1]))
-                mInjector.sendCursorMove((int) imagePoint[0], imagePoint[1], false);
+                mInjector.sendCursorMove((int) imagePoint[0], (int) imagePoint[1], false);
         }
     }
 
