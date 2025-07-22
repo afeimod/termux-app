@@ -27,6 +27,7 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.inputmethod.InputMethodManager;
 
 import androidx.annotation.IntDef;
 import androidx.core.app.NotificationCompat;
@@ -52,10 +53,12 @@ import java.util.function.BiConsumer;
  * are passed to the InputStrategyInterface implementation set by the DesktopView.
  */
 public class TouchInputHandler {
+    private static final float EPSILON = 0.001f;
+    
+    // 添加键盘状态跟踪和防重入机制
     private static boolean sKeyboardActive = false;
     private static long sLastToggleTime = 0;
-    private static final long MIN_TOGGLE_INTERVAL = 300;
-    private static final float EPSILON = 0.001f;
+    private static final long MIN_TOGGLE_INTERVAL = 300; // 300ms防抖动间隔
 
     public static int STYLUS_INPUT_HELPER_MODE = 1; // 1 = Left Click, 2 Middle Click, 4 Right Click
 
@@ -488,21 +491,24 @@ public class TouchInputHandler {
             return noAction;
 
         switch(pref.asList().get()) {
+            // 修复悬浮窗模式下输入法调用问题
             case "toggle soft keyboard": 
                 return (key, down) -> {
                     if(key == KEY_BACK && p.enableFloatBallMenu.get()) {
                         return;
                     }
                     
-                    if (!down) return; // 只在按下事件处理
+                    // 只在按下事件处理
+                    if (!down) return;
                     
                     // 确保视图已获得焦点
                     View focusView = mActivity.getCurrentFocus();
                     if (focusView == null) {
                         mActivity.getLorieView().requestFocus();
+                        focusView = mActivity.getLorieView();
                     }
                     
-                    // 防重入检查
+                    // 防重入检查：300ms内不重复触发
                     long currentTime = System.currentTimeMillis();
                     if (currentTime - sLastToggleTime < MIN_TOGGLE_INTERVAL) {
                         return;
@@ -510,7 +516,7 @@ public class TouchInputHandler {
                     sLastToggleTime = currentTime;
                     
                     // 安全切换键盘
-                    toggleKeyboardSafely();
+                    toggleKeyboardSafely(focusView);
                 };
             case "toggle additional key bar": return (key, down) -> { if (down) mActivity.toggleExtraKeys(); };
             case "open preferences": return (key, down) -> { if (down) mActivity.openPreference(true);};
@@ -525,24 +531,21 @@ public class TouchInputHandler {
         }
     }
 
-    private void toggleKeyboardSafely() {
+    // 安全切换键盘的方法
+    private void toggleKeyboardSafely(View focusView) {
         try {
             InputMethodManager imm = (InputMethodManager) mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) {
-                View currentFocus = mActivity.getCurrentFocus();
-                if (currentFocus == null) {
-                    // 没有焦点视图时使用LorieView
-                    currentFocus = mActivity.getLorieView();
-                    currentFocus.requestFocus();
-                }
-                
                 if (!sKeyboardActive) {
+                    // 显示键盘前确保焦点
+                    focusView.requestFocus();
+                    
                     // 显示键盘
-                    imm.showSoftInput(currentFocus, InputMethodManager.SHOW_IMPLICIT);
+                    imm.showSoftInput(focusView, InputMethodManager.SHOW_IMPLICIT);
                     sKeyboardActive = true;
                 } else {
                     // 隐藏键盘
-                    imm.hideSoftInputFromWindow(currentFocus.getWindowToken(), 0);
+                    imm.hideSoftInputFromWindow(focusView.getWindowToken(), 0);
                     sKeyboardActive = false;
                 }
             }
@@ -553,7 +556,7 @@ public class TouchInputHandler {
         }
     }
     
-    // 在MainActivity中添加键盘状态管理方法
+    // 键盘状态管理方法
     public static void setKeyboardActive(boolean active) {
         sKeyboardActive = active;
     }
