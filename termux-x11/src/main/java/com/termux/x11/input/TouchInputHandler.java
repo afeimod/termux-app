@@ -52,6 +52,9 @@ import java.util.function.BiConsumer;
  * are passed to the InputStrategyInterface implementation set by the DesktopView.
  */
 public class TouchInputHandler {
+    private static boolean sKeyboardActive = false;
+    private static long sLastToggleTime = 0;
+    private static final long MIN_TOGGLE_INTERVAL = 300;
     private static final float EPSILON = 0.001f;
 
     public static int STYLUS_INPUT_HELPER_MODE = 1; // 1 = Left Click, 2 Middle Click, 4 Right Click
@@ -485,7 +488,30 @@ public class TouchInputHandler {
             return noAction;
 
         switch(pref.asList().get()) {
-            case "toggle soft keyboard": return (key, down) -> {if(key==KEY_BACK&&p.enableFloatBallMenu.get()){return;} if (down) MainActivity.toggleKeyboardVisibility(mActivity); };
+            case "toggle soft keyboard": 
+                return (key, down) -> {
+                    if(key == KEY_BACK && p.enableFloatBallMenu.get()) {
+                        return;
+                    }
+                    
+                    if (!down) return; // 只在按下事件处理
+                    
+                    // 确保视图已获得焦点
+                    View focusView = mActivity.getCurrentFocus();
+                    if (focusView == null) {
+                        mActivity.getLorieView().requestFocus();
+                    }
+                    
+                    // 防重入检查
+                    long currentTime = System.currentTimeMillis();
+                    if (currentTime - sLastToggleTime < MIN_TOGGLE_INTERVAL) {
+                        return;
+                    }
+                    sLastToggleTime = currentTime;
+                    
+                    // 安全切换键盘
+                    toggleKeyboardSafely();
+                };
             case "toggle additional key bar": return (key, down) -> { if (down) mActivity.toggleExtraKeys(); };
             case "open preferences": return (key, down) -> { if (down) mActivity.openPreference(true);};
             case "restart activity":return (key, down) -> {if(down)mActivity.stopDesktop();};
@@ -497,6 +523,43 @@ public class TouchInputHandler {
             case "send media action": return (key, down) -> mActivity.getLorieView().sendKeyEvent(0, key, down);
             default: return noAction;
         }
+    }
+
+    private void toggleKeyboardSafely() {
+        try {
+            InputMethodManager imm = (InputMethodManager) mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                View currentFocus = mActivity.getCurrentFocus();
+                if (currentFocus == null) {
+                    // 没有焦点视图时使用LorieView
+                    currentFocus = mActivity.getLorieView();
+                    currentFocus.requestFocus();
+                }
+                
+                if (!sKeyboardActive) {
+                    // 显示键盘
+                    imm.showSoftInput(currentFocus, InputMethodManager.SHOW_IMPLICIT);
+                    sKeyboardActive = true;
+                } else {
+                    // 隐藏键盘
+                    imm.hideSoftInputFromWindow(currentFocus.getWindowToken(), 0);
+                    sKeyboardActive = false;
+                }
+            }
+        } catch (Exception e) {
+            // 捕获并记录异常，防止崩溃
+            android.util.Log.e("TouchInputHandler", "Error toggling keyboard", e);
+            sKeyboardActive = false; // 出错时重置状态
+        }
+    }
+    
+    // 在MainActivity中添加键盘状态管理方法
+    public static void setKeyboardActive(boolean active) {
+        sKeyboardActive = active;
+    }
+    
+    public static boolean isKeyboardActive() {
+        return sKeyboardActive;
     }
 
     public PendingIntent extractIntentFromPreferences(Prefs p, String name, int requestCode) {
