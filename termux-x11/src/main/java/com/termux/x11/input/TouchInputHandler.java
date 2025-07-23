@@ -422,7 +422,8 @@ public class TouchInputHandler {
     }
 
     public static boolean isExternal(InputDevice d) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_COdes.Q)
+        // 修复大小写错误：VERSION_COdes -> VERSION_CODES
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
             return d.isExternal();
 
         try {
