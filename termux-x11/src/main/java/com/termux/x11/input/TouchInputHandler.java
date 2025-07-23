@@ -541,64 +541,73 @@ public class TouchInputHandler {
         if (currentTime - sLastToggleTime < MIN_TOGGLE_INTERVAL) {
             return;
         }
-        
+    
         sIsToggling = true;
-        InputMethodManager imm = null; // 在外部声明
+        final InputMethodManager imm = (InputMethodManager) mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm == null) {
+            sIsToggling = false;
+            return;
+        }
+
+        // 优化焦点处理：只在需要时切换焦点
+        final View finalFocusView = focusView != null ? focusView : mActivity.getLorieView();
+        if (finalFocusView == null) {
+            sIsToggling = false;
+            return;
+        }
+
+        // 确保视图已获得焦点
+        if (!finalFocusView.isFocused()) {
+            finalFocusView.requestFocus();
+        }
+
+        // 检查当前键盘状态
+        boolean isKeyboardVisible = imm.isAcceptingText();
+    
+        if (isKeyboardVisible) {
+            // 隐藏键盘 - 立即执行
+            imm.hideSoftInputFromWindow(finalFocusView.getWindowToken(), 0);
+            sIsToggling = false; // 立即重置标志
+        } else {
+            // 创建 final 引用，以便在 lambda 中使用
+            final InputMethodManager finalImm = imm;
         
-        try {
-            sLastToggleTime = currentTime;
-            imm = (InputMethodManager) mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);
-            if (imm == null) {
-                return;
-            }
-
-            // 优化焦点处理：只在需要时切换焦点
-            final View finalFocusView = focusView != null ? focusView : mActivity.getLorieView();
-            if (finalFocusView == null) {
-                return;
-            }
-
-            // 确保视图已获得焦点
-            if (!finalFocusView.isFocused()) {
-                finalFocusView.requestFocus();
-            }
-
-            // 检查当前键盘状态
-            boolean isKeyboardVisible = imm.isAcceptingText();
-            
-            if (isKeyboardVisible) {
-                // 隐藏键盘 - 立即执行
-                imm.hideSoftInputFromWindow(finalFocusView.getWindowToken(), 0);
-                sIsToggling = false; // 立即重置标志
-            } else {
-                // 延迟显示键盘，确保焦点设置完成
-                mHandler.postDelayed(() -> {
-                    try {
-                        // 确保防重入状态仍然有效
-                        if (!sIsToggling) return;
-                        
-                        // 确保视图仍然可见
-                        if (finalFocusView.isShown() && finalFocusView.isFocused()) {
-                            imm.showSoftInput(finalFocusView, InputMethodManager.SHOW_IMPLICIT);
-                        } else {
-                            // 如果视图不可见或失去焦点，再次尝试请求焦点
-                            finalFocusView.requestFocus();
-                            mHandler.postDelayed(() -> {
-                                if (finalFocusView.isShown() && finalFocusView.isFocused()) {
-                                    imm.showSoftInput(finalFocusView, InputMethodManager.SHOW_IMPLICIT);
+            // 延迟显示键盘，确保焦点设置完成
+            mHandler.postDelayed(() -> {
+                try {
+                    // 确保防重入状态仍然有效
+                    if (!sIsToggling) return;
+                
+                    // 确保视图仍然可见
+                    if (finalFocusView.isShown() && finalFocusView.isFocused()) {
+                        finalImm.showSoftInput(finalFocusView, InputMethodManager.SHOW_IMPLICIT);
+                    } else {
+                        // 如果视图不可见或失去焦点，再次尝试请求焦点
+                        finalFocusView.requestFocus();
+                    
+                        // 创建新的 final 引用用于嵌套 lambda
+                        final InputMethodManager nestedImm = finalImm;
+                        final View nestedFocusView = finalFocusView;
+                    
+                        mHandler.postDelayed(() -> {
+                            try {
+                                if (nestedFocusView.isShown() && nestedFocusView.isFocused()) {
+                                    nestedImm.showSoftInput(nestedFocusView, InputMethodManager.SHOW_IMPLICIT);
                                 }
+                            } catch (Exception e) {
+                                android.util.Log.e("TouchInputHandler", "Error showing keyboard in nested runnable", e);
+                            } finally {
                                 sIsToggling = false; // 重置标志
-                            }, KEYBOARD_SHOW_DELAY);
-                        }
-                    } catch (Exception e) {
-                        android.util.Log.e("TouchInputHandler", "Error showing keyboard", e);
-                        sIsToggling = false; // 确保异常时重置标志
+                            }
+                        }, KEYBOARD_SHOW_DELAY);
+                        return; // 提前返回，不重置标志（在嵌套任务中重置）
                     }
-                }, KEYBOARD_SHOW_DELAY);
-            }
-        } catch (Exception e) {
-            android.util.Log.e("TouchInputHandler", "Error toggling keyboard", e);
-            sIsToggling = false; // 确保异常时重置标志
+                } catch (Exception e) {
+                    android.util.Log.e("TouchInputHandler", "Error showing keyboard", e);
+                } finally {
+                    sIsToggling = false; // 重置标志
+                }
+            }, KEYBOARD_SHOW_DELAY);
         }
     }
 
