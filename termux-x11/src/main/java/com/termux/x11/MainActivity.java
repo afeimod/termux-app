@@ -877,18 +877,20 @@ public class MainActivity extends LoriePreferences {
      * @param context calling context
      */
     public static void toggleKeyboardVisibility(Context context) {
-        Log.d("MainActivity", "Toggling keyboard visibility");
-        if (inputMethodManager != null) {
-            android.util.Log.d("toggleKeyboardVisibility", "externalKeyboardConnected " + externalKeyboardConnected + " showIMEWhileExternalConnected " + showIMEWhileExternalConnected);
-            if (isConnected()) {
-                getInstance().getLorieView().requestFocus();
+        handler.postDelayed(()->{
+            Log.d("MainActivity", "Toggling keyboard visibility");
+            if (inputMethodManager != null) {
+                android.util.Log.d("toggleKeyboardVisibility", "externalKeyboardConnected " + externalKeyboardConnected + " showIMEWhileExternalConnected " + showIMEWhileExternalConnected);
+                if (isConnected()) {
+                    getInstance().getLorieView().requestFocus();
+                }
+                if (!externalKeyboardConnected || showIMEWhileExternalConnected) {
+                    openSoftKeyboard();
+                } else {
+                    closeSoftKeyboard();
+                }
             }
-            if (!externalKeyboardConnected || showIMEWhileExternalConnected) {
-                openSoftKeyboard();
-            } else {
-                closeSoftKeyboard();
-            }
-        }
+        },1000);
     }
 
     @SuppressWarnings("SameParameterValue")
