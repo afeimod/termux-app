@@ -543,9 +543,11 @@ public class TouchInputHandler {
         }
         
         sIsToggling = true;
+        InputMethodManager imm = null; // 在外部声明
+        
         try {
             sLastToggleTime = currentTime;
-            InputMethodManager imm = (InputMethodManager) mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm = (InputMethodManager) mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm == null) {
                 return;
             }
@@ -567,11 +569,12 @@ public class TouchInputHandler {
             if (isKeyboardVisible) {
                 // 隐藏键盘 - 立即执行
                 imm.hideSoftInputFromWindow(finalFocusView.getWindowToken(), 0);
+                sIsToggling = false; // 立即重置标志
             } else {
                 // 延迟显示键盘，确保焦点设置完成
                 mHandler.postDelayed(() -> {
                     try {
-                        // 再次检查防重入状态
+                        // 确保防重入状态仍然有效
                         if (!sIsToggling) return;
                         
                         // 确保视图仍然可见
@@ -584,20 +587,18 @@ public class TouchInputHandler {
                                 if (finalFocusView.isShown() && finalFocusView.isFocused()) {
                                     imm.showSoftInput(finalFocusView, InputMethodManager.SHOW_IMPLICIT);
                                 }
+                                sIsToggling = false; // 重置标志
                             }, KEYBOARD_SHOW_DELAY);
                         }
                     } catch (Exception e) {
                         android.util.Log.e("TouchInputHandler", "Error showing keyboard", e);
+                        sIsToggling = false; // 确保异常时重置标志
                     }
                 }, KEYBOARD_SHOW_DELAY);
             }
-        } finally {
-            // 重置防重入标志 - 对于显示操作，在延迟后重置
-            if (!imm.isAcceptingText()) {
-                mHandler.postDelayed(() -> sIsToggling = false, KEYBOARD_SHOW_DELAY + 50);
-            } else {
-                sIsToggling = false;
-            }
+        } catch (Exception e) {
+            android.util.Log.e("TouchInputHandler", "Error toggling keyboard", e);
+            sIsToggling = false; // 确保异常时重置标志
         }
     }
 
