@@ -57,6 +57,7 @@ public class TouchInputHandler {
     
     // 添加防重入机制
     private static long sLastToggleTime = 0;
+    private static volatile boolean sIsToggling = false;
     private static final long MIN_TOGGLE_INTERVAL = 300; // 300ms防抖动间隔
 
     public static int STYLUS_INPUT_HELPER_MODE = 1; // 1 = Left Click, 2 Middle Click, 4 Right Click
@@ -514,13 +515,6 @@ public class TouchInputHandler {
                         focusView = mActivity.getWindow().getDecorView().findViewById(android.R.id.content);
                     }
                     
-                    // 防重入检查：300ms内不重复触发
-                    long currentTime = System.currentTimeMillis();
-                    if (currentTime - sLastToggleTime < MIN_TOGGLE_INTERVAL) {
-                        return;
-                    }
-                    sLastToggleTime = currentTime;
-                    
                     // 安全切换键盘
                     toggleKeyboardSafely(focusView);
                 };
@@ -539,41 +533,40 @@ public class TouchInputHandler {
 
     // 安全切换键盘的方法 - 修复悬浮菜单重复调用问题
     private void toggleKeyboardSafely(View focusView) {
+        // 双重防重入检查
+        if (sIsToggling) return;
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - sLastToggleTime < MIN_TOGGLE_INTERVAL) {
+            return;
+        }
+        
+        sIsToggling = true;
         try {
+            sLastToggleTime = currentTime;
             InputMethodManager imm = (InputMethodManager) mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm == null) {
                 return;
             }
-            
-            // 创建最终变量用于lambda表达式
-            final View finalFocusView = (focusView != null) ? focusView : mActivity.getLorieView();
-            
-            // 直接检查键盘当前是否可见
-            boolean isKeyboardVisible = imm.isAcceptingText();
-            
-            if (isKeyboardVisible) {
-                // 隐藏键盘 - 使用 HIDE_NOT_ALWAYS 避免意外关闭
-                imm.hideSoftInputFromWindow(finalFocusView.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
-            } else {
-                // 确保焦点视图获得焦点
-                if (finalFocusView != null) {
-                    finalFocusView.requestFocus();
-                }
-                
-                // 延迟显示键盘以确保焦点已设置
-                new Handler().postDelayed(() -> {
-                    try {
-                        if (finalFocusView != null) {
-                            imm.showSoftInput(finalFocusView, InputMethodManager.SHOW_IMPLICIT);
-                        }
-                    } catch (Exception e) {
-                        android.util.Log.e("TouchInputHandler", "Error showing keyboard", e);
-                    }
-                }, 50); // 50ms 延迟确保焦点设置完成
+
+            // 优化焦点处理：只在需要时切换焦点
+            final View finalFocusView = focusView != null ? focusView : mActivity.getLorieView();
+            if (finalFocusView == null) {
+                return;
             }
-        } catch (Exception e) {
-            // 捕获并记录异常，防止崩溃
-            android.util.Log.e("TouchInputHandler", "Error toggling keyboard", e);
+
+            // 确保视图已获得焦点
+            if (!finalFocusView.isFocused()) {
+                finalFocusView.requestFocus();
+            }
+
+            // 直接切换键盘状态
+            if (imm.isActive(finalFocusView)) {
+                imm.hideSoftInputFromWindow(finalFocusView.getWindowToken(), 0);
+            } else {
+                imm.showSoftInput(finalFocusView, InputMethodManager.SHOW_IMPLICIT);
+            }
+        } finally {
+            sIsToggling = false;
         }
     }
 
