@@ -148,7 +148,7 @@ public class DisplaySlidingWindow extends HorizontalScrollView {
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
-        if(!MainActivity.mLorieViewConnected){
+        if(!MainActivity.mLorieViewConnected&&!mLockContentSlider){
             return super.onInterceptTouchEvent(ev);
         }
 //        Log.d("onInterceptTouchEvent",String.valueOf(ev.getAction()));
