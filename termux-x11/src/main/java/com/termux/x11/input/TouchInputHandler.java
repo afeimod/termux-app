@@ -59,6 +59,7 @@ public class TouchInputHandler {
     private static long sLastToggleTime = 0;
     private static volatile boolean sIsToggling = false;
     private static final long MIN_TOGGLE_INTERVAL = 300; // 300ms防抖动间隔
+    private static final long KEYBOARD_SHOW_DELAY = 100; // 显示键盘的延迟
 
     public static int STYLUS_INPUT_HELPER_MODE = 1; // 1 = Left Click, 2 Middle Click, 4 Right Click
 
@@ -99,6 +100,7 @@ public class TouchInputHandler {
     private final InputEventSender mInjector;
     private final MainActivity mActivity;
     private final DisplayMetrics mMetrics = new DisplayMetrics();
+    private final Handler mHandler = new Handler(); // 用于延迟操作
 
     private final BiConsumer<Integer, Boolean> noAction = (key, down) -> {};
     private BiConsumer<Integer, Boolean> swipeUpAction = noAction, swipeDownAction = noAction,
@@ -559,14 +561,43 @@ public class TouchInputHandler {
                 finalFocusView.requestFocus();
             }
 
-            // 直接切换键盘状态
-            if (imm.isActive(finalFocusView)) {
+            // 检查当前键盘状态
+            boolean isKeyboardVisible = imm.isAcceptingText();
+            
+            if (isKeyboardVisible) {
+                // 隐藏键盘 - 立即执行
                 imm.hideSoftInputFromWindow(finalFocusView.getWindowToken(), 0);
             } else {
-                imm.showSoftInput(finalFocusView, InputMethodManager.SHOW_IMPLICIT);
+                // 延迟显示键盘，确保焦点设置完成
+                mHandler.postDelayed(() -> {
+                    try {
+                        // 再次检查防重入状态
+                        if (!sIsToggling) return;
+                        
+                        // 确保视图仍然可见
+                        if (finalFocusView.isShown() && finalFocusView.isFocused()) {
+                            imm.showSoftInput(finalFocusView, InputMethodManager.SHOW_IMPLICIT);
+                        } else {
+                            // 如果视图不可见或失去焦点，再次尝试请求焦点
+                            finalFocusView.requestFocus();
+                            mHandler.postDelayed(() -> {
+                                if (finalFocusView.isShown() && finalFocusView.isFocused()) {
+                                    imm.showSoftInput(finalFocusView, InputMethodManager.SHOW_IMPLICIT);
+                                }
+                            }, KEYBOARD_SHOW_DELAY);
+                        }
+                    } catch (Exception e) {
+                        android.util.Log.e("TouchInputHandler", "Error showing keyboard", e);
+                    }
+                }, KEYBOARD_SHOW_DELAY);
             }
         } finally {
-            sIsToggling = false;
+            // 重置防重入标志 - 对于显示操作，在延迟后重置
+            if (!imm.isAcceptingText()) {
+                mHandler.postDelayed(() -> sIsToggling = false, KEYBOARD_SHOW_DELAY + 50);
+            } else {
+                sIsToggling = false;
+            }
         }
     }
 
