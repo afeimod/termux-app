@@ -237,6 +237,9 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
     // 添加Handler用于延迟执行
     private Handler mHandler = new Handler();
 
+    // 添加首次运行标志
+    private boolean mIsFirstRun = false;
+
 
     public void onMenuOpen(boolean isOpen, int flag) {
         if (isOpen /*&& flag == 0*/) {
@@ -306,6 +309,13 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
         // Delete ReportInfo serialized object files from cache older than 14 days
         ReportActivity.deleteReportInfoFilesOlderThanXDays(this, 14, false);
+
+        // 检查是否是首次运行
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
+        mIsFirstRun = preferences.getBoolean("is_first_run", true);
+        if (mIsFirstRun) {
+            Logger.logInfo(LOG_TAG, "First run detected, will show terminal interface automatically");
+        }
 
         // Load Termux app SharedProperties from disk
         mProperties = TermuxAppSharedProperties.getProperties();
@@ -540,7 +550,7 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
 
     private void setFloatBallMenuClient() {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
-        mEnableFloatBallMenu = preferences.getBoolean("enableFloatBallMenu", true);
+        mEnableFloatBallMenu = preferences.getBoolean("enableFloatBallMenu", false);
         if (mEnableFloatBallMenu) {
             mFloatBallMenuClient = new FloatBallMenuClient(this);
             mFloatBallMenuClient.onCreate();
@@ -695,6 +705,21 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
                         // 创建新会话
                         mTermuxTerminalSessionActivityClient.addNewSession(launchFailsafe, null);
                         
+                        // 如果是首次运行，延迟显示终端界面
+                        if (mIsFirstRun) {
+                            mHandler.postDelayed(() -> {
+                                if (mMainContentView != null && !isFinishing()) {
+                                    Logger.logInfo(LOG_TAG, "First run: automatically showing terminal interface");
+                                    mMainContentView.setTerminalViewSwitchSlider(true);
+                                    
+                                    // 标记为已运行过
+                                    SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(TermuxActivity.this);
+                                    preferences.edit().putBoolean("is_first_run", false).apply();
+                                    mIsFirstRun = false;
+                                }
+                            }, 1500);
+                        }
+                        
                         // 延迟执行确保会话初始化完成
                         mHandler.postDelayed(() -> {
                             // 获取当前活动的会话
@@ -740,6 +765,21 @@ public class TermuxActivity extends com.termux.x11.MainActivity implements Servi
                 mTermuxTerminalSessionActivityClient.addNewSession(isFailSafe, null);
             } else {
                 mTermuxTerminalSessionActivityClient.setCurrentSession(mTermuxTerminalSessionActivityClient.getCurrentStoredSessionOrLast());
+            }
+            
+            // 如果有现有会话且是首次运行，显示终端界面
+            if (mIsFirstRun) {
+                mHandler.postDelayed(() -> {
+                    if (mMainContentView != null && !isFinishing()) {
+                        Logger.logInfo(LOG_TAG, "First run with existing sessions: automatically showing terminal interface");
+                        mMainContentView.setTerminalViewSwitchSlider(true);
+                        
+                        // 标记为已运行过
+                        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(TermuxActivity.this);
+                        preferences.edit().putBoolean("is_first_run", false).apply();
+                        mIsFirstRun = false;
+                    }
+                }, 1000);
             }
         }
 
